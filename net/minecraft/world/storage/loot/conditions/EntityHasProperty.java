@@ -1,0 +1,91 @@
+package net.minecraft.world.storage.loot.conditions;
+
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSerializationContext;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.JsonUtils;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.storage.loot.LootContext;
+import net.minecraft.world.storage.loot.properties.EntityProperty;
+import net.minecraft.world.storage.loot.properties.EntityPropertyManager;
+
+public class EntityHasProperty implements LootCondition {
+   private final EntityProperty[] properties;
+   private final LootContext.EntityTarget target;
+
+   public EntityHasProperty(EntityProperty[] propertiesIn, LootContext.EntityTarget targetIn) {
+      this.properties = propertiesIn;
+      this.target = targetIn;
+   }
+
+   public boolean testCondition(Random rand, LootContext context) {
+      Entity entity = context.getEntity(this.target);
+      if (entity == null) {
+         return false;
+      } else {
+         EntityProperty[] var4 = this.properties;
+         int var5 = var4.length;
+
+         for(int var6 = 0; var6 < var5; ++var6) {
+            EntityProperty entityproperty = var4[var6];
+            if (!entityproperty.testProperty(rand, entity)) {
+               return false;
+            }
+         }
+
+         return true;
+      }
+   }
+
+   public static class Serializer extends LootCondition.Serializer<EntityHasProperty> {
+      protected Serializer() {
+         super(new ResourceLocation("entity_properties"), EntityHasProperty.class);
+      }
+
+      public void serialize(JsonObject json, EntityHasProperty value, JsonSerializationContext context) {
+         JsonObject jsonobject = new JsonObject();
+         EntityProperty[] var5 = value.properties;
+         int var6 = var5.length;
+
+         for(int var7 = 0; var7 < var6; ++var7) {
+            EntityProperty entityproperty = var5[var7];
+            EntityProperty.Serializer<EntityProperty> serializer = EntityPropertyManager.getSerializerFor(entityproperty);
+            jsonobject.add(serializer.getName().toString(), serializer.serialize(entityproperty, context));
+         }
+
+         json.add("properties", jsonobject);
+         json.add("entity", context.serialize(value.target));
+      }
+
+      public EntityHasProperty deserialize(JsonObject json, JsonDeserializationContext context) {
+         Set<Map.Entry<String, JsonElement>> set = JsonUtils.getJsonObject(json, "properties").entrySet();
+         EntityProperty[] aentityproperty = new EntityProperty[set.size()];
+         int i = 0;
+
+         Map.Entry entry;
+         for(Iterator var6 = set.iterator(); var6.hasNext(); aentityproperty[i++] = EntityPropertyManager.getSerializerForName(new ResourceLocation((String)entry.getKey())).deserialize((JsonElement)entry.getValue(), context)) {
+            entry = (Map.Entry)var6.next();
+         }
+
+         return new EntityHasProperty(aentityproperty, (LootContext.EntityTarget)JsonUtils.deserializeClass(json, "entity", context, LootContext.EntityTarget.class));
+      }
+
+      // $FF: synthetic method
+      // $FF: bridge method
+      public LootCondition deserialize(JsonObject var1, JsonDeserializationContext var2) {
+         return this.deserialize(var1, var2);
+      }
+
+      // $FF: synthetic method
+      // $FF: bridge method
+      public void serialize(JsonObject var1, LootCondition var2, JsonSerializationContext var3) {
+         this.serialize(var1, (EntityHasProperty)var2, var3);
+      }
+   }
+}

@@ -1,0 +1,64 @@
+package net.optifine.util;
+
+public class MemoryMonitor {
+   private static long startTimeMs = System.currentTimeMillis();
+   private static long startMemory = getMemoryUsed();
+   private static long lastTimeMs;
+   private static long lastMemory;
+   private static boolean gcEvent;
+   private static int memBytesSec;
+   private static long MB;
+
+   public MemoryMonitor() {
+   }
+
+   public static void update() {
+      long i = System.currentTimeMillis();
+      long j = getMemoryUsed();
+      gcEvent = j < lastMemory;
+      if (gcEvent) {
+         long k = lastTimeMs - startTimeMs;
+         long l = lastMemory - startMemory;
+         double d0 = (double)k / 1000.0;
+         int i1 = (int)((double)l / d0);
+         if (i1 > 0) {
+            memBytesSec = i1;
+         }
+
+         startTimeMs = i;
+         startMemory = j;
+      }
+
+      lastTimeMs = i;
+      lastMemory = j;
+   }
+
+   private static long getMemoryUsed() {
+      Runtime runtime = Runtime.getRuntime();
+      return runtime.totalMemory() - runtime.freeMemory();
+   }
+
+   public static long getStartTimeMs() {
+      return startTimeMs;
+   }
+
+   public static long getStartMemoryMb() {
+      return startMemory / MB;
+   }
+
+   public static boolean isGcEvent() {
+      return gcEvent;
+   }
+
+   public static long getAllocationRateMb() {
+      return (long)memBytesSec / MB;
+   }
+
+   static {
+      lastTimeMs = startTimeMs;
+      lastMemory = startMemory;
+      gcEvent = false;
+      memBytesSec = 0;
+      MB = 1048576L;
+   }
+}

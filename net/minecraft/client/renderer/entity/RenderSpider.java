@@ -1,0 +1,37 @@
+package net.minecraft.client.renderer.entity;
+
+import net.minecraft.client.model.ModelSpider;
+import net.minecraft.client.renderer.entity.layers.LayerSpiderEyes;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.monster.EntitySpider;
+import net.minecraft.util.ResourceLocation;
+
+public class RenderSpider<T extends EntitySpider> extends RenderLiving<T> {
+   private static final ResourceLocation SPIDER_TEXTURES = new ResourceLocation("textures/entity/spider/spider.png");
+
+   public RenderSpider(RenderManager renderManagerIn) {
+      super(renderManagerIn, new ModelSpider(), 1.0F);
+      this.addLayer(new LayerSpiderEyes(this));
+   }
+
+   protected float getDeathMaxRotation(T entityLivingBaseIn) {
+      return 180.0F;
+   }
+
+   protected ResourceLocation getEntityTexture(T entity) {
+      return SPIDER_TEXTURES;
+   }
+
+   // $FF: synthetic method
+   // $FF: bridge method
+   protected float getDeathMaxRotation(EntityLivingBase var1) {
+      return this.getDeathMaxRotation((EntitySpider)var1);
+   }
+
+   // $FF: synthetic method
+   // $FF: bridge method
+   protected ResourceLocation getEntityTexture(Entity var1) {
+      return this.getEntityTexture((EntitySpider)var1);
+   }
+}
