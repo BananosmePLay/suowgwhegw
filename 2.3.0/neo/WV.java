@@ -1,0 +1,243 @@
+package neo;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import java.util.Iterator;
+import java.util.List;
+import javax.annotation.Nullable;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+public class WV {
+   private static final Logger LOGGER = LogManager.getLogger();
+   private final WU playerChunkMap;
+   private final List<MG> players = Lists.newArrayList();
+   private final ChunkPos pos;
+   private final short[] changedBlocks = new short[64];
+   @Nullable
+   private bam chunk;
+   private int changes;
+   private int changedSectionFilter;
+   private long lastUpdateInhabitedTime;
+   private boolean sentToPlayers;
+
+   public WV(WU mapIn, int chunkX, int chunkZ) {
+      this.playerChunkMap = mapIn;
+      this.pos = new ChunkPos(chunkX, chunkZ);
+      this.chunk = mapIn.getWorldServer().getChunkProvider().loadChunk(chunkX, chunkZ);
+   }
+
+   public ChunkPos getPos() {
+      return this.pos;
+   }
+
+   public void addPlayer(MG player) {
+      if (this.players.contains(player)) {
+         LOGGER.debug("Failed to add player. {} already is in chunk {}, {}", player, this.pos.x, this.pos.z);
+      } else {
+         if (this.players.isEmpty()) {
+            this.lastUpdateInhabitedTime = this.playerChunkMap.getWorldServer().getTotalWorldTime();
+         }
+
+         this.players.add(player);
+         if (this.sentToPlayers) {
+            this.sendToPlayer(player);
+         }
+      }
+
+   }
+
+   public void removePlayer(MG player) {
+      if (this.players.contains(player)) {
+         if (this.sentToPlayers) {
+            player.connection.sendPacket(new UZ(this.pos.x, this.pos.z));
+         }
+
+         this.players.remove(player);
+         if (this.players.isEmpty()) {
+            this.playerChunkMap.removeEntry(this);
+         }
+      }
+
+   }
+
+   public boolean providePlayerChunk(boolean canGenerate) {
+      if (this.chunk != null) {
+         return true;
+      } else {
+         if (canGenerate) {
+            this.chunk = this.playerChunkMap.getWorldServer().getChunkProvider().provideChunk(this.pos.x, this.pos.z);
+         } else {
+            this.chunk = this.playerChunkMap.getWorldServer().getChunkProvider().loadChunk(this.pos.x, this.pos.z);
+         }
+
+         return this.chunk != null;
+      }
+   }
+
+   public boolean sendToPlayers() {
+      if (this.sentToPlayers) {
+         return true;
+      } else if (this.chunk == null) {
+         return false;
+      } else if (!this.chunk.isPopulated()) {
+         return false;
+      } else {
+         this.changes = 0;
+         this.changedSectionFilter = 0;
+         this.sentToPlayers = true;
+         Sz<?> packet = new TE(this.chunk, 65535);
+         Iterator var2 = this.players.iterator();
+
+         while(var2.hasNext()) {
+            MG entityplayermp = (MG)var2.next();
+            entityplayermp.connection.sendPacket(packet);
+            this.playerChunkMap.getWorldServer().getEntityTracker().sendLeashedEntitiesInChunk(entityplayermp, this.chunk);
+         }
+
+         return true;
+      }
+   }
+
+   public void sendToPlayer(MG player) {
+      if (this.sentToPlayers) {
+         player.connection.sendPacket(new TE(this.chunk, 65535));
+         this.playerChunkMap.getWorldServer().getEntityTracker().sendLeashedEntitiesInChunk(player, this.chunk);
+      }
+
+   }
+
+   public void updateChunkInhabitedTime() {
+      long i = this.playerChunkMap.getWorldServer().getTotalWorldTime();
+      if (this.chunk != null) {
+         this.chunk.setInhabitedTime(this.chunk.getInhabitedTime() + i - this.lastUpdateInhabitedTime);
+      }
+
+      this.lastUpdateInhabitedTime = i;
+   }
+
+   public void blockChanged(int x, int y, int z) {
+      if (this.sentToPlayers) {
+         if (this.changes == 0) {
+            this.playerChunkMap.entryChanged(this);
+         }
+
+         this.changedSectionFilter |= 1 << (y >> 4);
+         if (this.changes < 64) {
+            short short1 = (short)(x << 12 | z << 8 | y);
+
+            for(int i = 0; i < this.changes; ++i) {
+               if (this.changedBlocks[i] == short1) {
+                  return;
+               }
+            }
+
+            this.changedBlocks[this.changes++] = short1;
+         }
+      }
+
+   }
+
+   public void sendPacket(Sz<?> packetIn) {
+      if (this.sentToPlayers) {
+         for(int i = 0; i < this.players.size(); ++i) {
+            ((MG)this.players.get(i)).connection.sendPacket(packetIn);
+         }
+      }
+
+   }
+
+   public void update() {
+      if (this.sentToPlayers && this.chunk != null && this.changes != 0) {
+         int l;
+         int i1;
+         int j1;
+         if (this.changes == 1) {
+            l = (this.changedBlocks[0] >> 12 & 15) + this.pos.x * 16;
+            i1 = this.changedBlocks[0] & 255;
+            j1 = (this.changedBlocks[0] >> 8 & 15) + this.pos.z * 16;
+            BlockPos blockpos = new BlockPos(l, i1, j1);
+            this.sendPacket(new TA(this.playerChunkMap.getWorldServer(), blockpos));
+            if (this.playerChunkMap.getWorldServer().getBlockState(blockpos).getBlock().hasTileEntity()) {
+               this.sendBlockEntity(this.playerChunkMap.getWorldServer().getTileEntity(blockpos));
+            }
+         } else if (this.changes == 64) {
+            this.sendPacket(new TE(this.chunk, this.changedSectionFilter));
+         } else {
+            this.sendPacket(new Un(this.changes, this.changedBlocks, this.chunk));
+
+            for(l = 0; l < this.changes; ++l) {
+               i1 = (this.changedBlocks[l] >> 12 & 15) + this.pos.x * 16;
+               j1 = this.changedBlocks[l] & 255;
+               int k1 = (this.changedBlocks[l] >> 8 & 15) + this.pos.z * 16;
+               BlockPos blockpos1 = new BlockPos(i1, j1, k1);
+               if (this.playerChunkMap.getWorldServer().getBlockState(blockpos1).getBlock().hasTileEntity()) {
+                  this.sendBlockEntity(this.playerChunkMap.getWorldServer().getTileEntity(blockpos1));
+               }
+            }
+         }
+
+         this.changes = 0;
+         this.changedSectionFilter = 0;
+      }
+
+   }
+
+   private void sendBlockEntity(@Nullable Yg be) {
+      if (be != null) {
+         Vg spacketupdatetileentity = be.getUpdatePacket();
+         if (spacketupdatetileentity != null) {
+            this.sendPacket(spacketupdatetileentity);
+         }
+      }
+
+   }
+
+   public boolean containsPlayer(MG player) {
+      return this.players.contains(player);
+   }
+
+   public boolean hasPlayerMatching(Predicate<MG> predicate) {
+      return Iterables.tryFind(this.players, predicate).isPresent();
+   }
+
+   public boolean hasPlayerMatchingInRange(double range, Predicate<MG> predicate) {
+      int i = 0;
+
+      for(int j = this.players.size(); i < j; ++i) {
+         MG entityplayermp = (MG)this.players.get(i);
+         if (predicate.apply(entityplayermp) && this.pos.getDistanceSq(entityplayermp) < range * range) {
+            return true;
+         }
+      }
+
+      return false;
+   }
+
+   public boolean isSentToPlayers() {
+      return this.sentToPlayers;
+   }
+
+   @Nullable
+   public bam getChunk() {
+      return this.chunk;
+   }
+
+   public double getClosestPlayerDistance() {
+      double d0 = Double.MAX_VALUE;
+      Iterator var3 = this.players.iterator();
+
+      while(var3.hasNext()) {
+         MG entityplayermp = (MG)var3.next();
+         double d1 = this.pos.getDistanceSq(entityplayermp);
+         if (d1 < d0) {
+            d0 = d1;
+         }
+      }
+
+      return d0;
+   }
+}

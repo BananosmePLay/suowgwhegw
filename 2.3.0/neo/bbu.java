@@ -1,0 +1,26 @@
+package neo;
+
+import java.util.Random;
+import net.minecraft.util.math.BlockPos;
+
+public class bbu extends bbE {
+   public bbu() {
+   }
+
+   public boolean generate(bij worldIn, Random rand, BlockPos position) {
+      for(int i = 0; i < 10; ++i) {
+         BlockPos blockpos = position.add(rand.nextInt(8) - rand.nextInt(8), rand.nextInt(4) - rand.nextInt(4), rand.nextInt(8) - rand.nextInt(8));
+         if (worldIn.isAirBlock(blockpos)) {
+            int j = 1 + rand.nextInt(rand.nextInt(3) + 1);
+
+            for(int k = 0; k < j; ++k) {
+               if (Nk.CACTUS.canBlockStay(worldIn, blockpos)) {
+                  worldIn.setBlockState(blockpos.up(k), Nk.CACTUS.getDefaultState(), 2);
+               }
+            }
+         }
+      }
+
+      return true;
+   }
+}

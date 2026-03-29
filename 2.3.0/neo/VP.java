@@ -1,0 +1,51 @@
+package neo;
+
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.Vec3d;
+
+public class VP extends VL {
+   public VP(Iu entitylivingIn, bij worldIn) {
+      super(entitylivingIn, worldIn);
+   }
+
+   protected VJ getPathFinder() {
+      return new VJ(new VT());
+   }
+
+   protected boolean canNavigate() {
+      return this.isInLiquid();
+   }
+
+   protected Vec3d getEntityPosition() {
+      return new Vec3d(this.entity.posX, this.entity.posY + (double)this.entity.height * 0.5, this.entity.posZ);
+   }
+
+   protected void pathFollow() {
+      Vec3d vec3d = this.getEntityPosition();
+      float f = this.entity.width * this.entity.width;
+      int i = true;
+      if (vec3d.squareDistanceTo(this.currentPath.getVectorFromIndex(this.entity, this.currentPath.getCurrentPathIndex())) < (double)f) {
+         this.currentPath.incrementPathIndex();
+      }
+
+      for(int j = Math.min(this.currentPath.getCurrentPathIndex() + 6, this.currentPath.getCurrentPathLength() - 1); j > this.currentPath.getCurrentPathIndex(); --j) {
+         Vec3d vec3d1 = this.currentPath.getVectorFromIndex(this.entity, j);
+         if (vec3d1.squareDistanceTo(vec3d) <= 36.0 && this.isDirectPathBetweenPoints(vec3d, vec3d1, 0, 0, 0)) {
+            this.currentPath.setCurrentPathIndex(j);
+            break;
+         }
+      }
+
+      this.checkForStuck(vec3d);
+   }
+
+   protected boolean isDirectPathBetweenPoints(Vec3d posVec31, Vec3d posVec32, int sizeX, int sizeY, int sizeZ) {
+      RayTraceResult raytraceresult = this.world.rayTraceBlocks(posVec31, new Vec3d(posVec32.x, posVec32.y + (double)this.entity.height * 0.5, posVec32.z), false, true, false);
+      return raytraceresult == null || raytraceresult.typeOfHit == RayTraceResult.Type.MISS;
+   }
+
+   public boolean canEntityStandOnPos(BlockPos pos) {
+      return !this.world.getBlockState(pos).isFullBlock();
+   }
+}

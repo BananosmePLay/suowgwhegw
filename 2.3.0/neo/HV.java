@@ -1,0 +1,515 @@
+package neo;
+
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
+import java.util.List;
+import javax.annotation.Nullable;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.EntitySelectors;
+import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.SoundEvent;
+import net.minecraft.util.datafix.DataFixer;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
+
+public class HV extends Kl implements IK {
+   private static final Rd<Integer> FIRST_HEAD_TARGET;
+   private static final Rd<Integer> SECOND_HEAD_TARGET;
+   private static final Rd<Integer> THIRD_HEAD_TARGET;
+   private static final Rd<Integer>[] HEAD_TARGETS;
+   private static final Rd<Integer> INVULNERABILITY_TIME;
+   private final float[] xRotationHeads = new float[2];
+   private final float[] yRotationHeads = new float[2];
+   private final float[] xRotOHeads = new float[2];
+   private final float[] yRotOHeads = new float[2];
+   private final int[] nextHeadUpdate = new int[2];
+   private final int[] idleHeadUpdates = new int[2];
+   private int blockBreakCounter;
+   private final baf bossInfo;
+   private static final Predicate<Ig> NOT_UNDEAD;
+
+   public HV(bij worldIn) {
+      super(worldIn);
+      this.bossInfo = (baf)(new baf(this.getDisplayName(), bac.PURPLE, bad.PROGRESS)).setDarkenSky(true);
+      this.setHealth(this.getMaxHealth());
+      this.setSize(0.9F, 3.5F);
+      this.isImmuneToFire = true;
+      ((VO)this.getNavigator()).setCanSwim(true);
+      this.experienceValue = 50;
+   }
+
+   protected void initEntityAI() {
+      this.tasks.addTask(0, new HU(this));
+      this.tasks.addTask(1, new He(this));
+      this.tasks.addTask(2, new Ge(this, 1.0, 40, 20.0F));
+      this.tasks.addTask(5, new Ho(this, 1.0));
+      this.tasks.addTask(6, new Hq(this, ME.class, 8.0F));
+      this.tasks.addTask(7, new GH(this));
+      this.targetTasks.addTask(1, new GB(this, false, new Class[0]));
+      this.targetTasks.addTask(2, new GR(this, Iu.class, 0, false, false, NOT_UNDEAD));
+   }
+
+   protected void entityInit() {
+      super.entityInit();
+      this.dataManager.register(FIRST_HEAD_TARGET, 0);
+      this.dataManager.register(SECOND_HEAD_TARGET, 0);
+      this.dataManager.register(THIRD_HEAD_TARGET, 0);
+      this.dataManager.register(INVULNERABILITY_TIME, 0);
+   }
+
+   public static void registerFixesWither(DataFixer fixer) {
+      Iu.registerFixesMob(fixer, HV.class);
+   }
+
+   public void writeEntityToNBT(QQ compound) {
+      super.writeEntityToNBT(compound);
+      compound.setInteger("Invul", this.getInvulTime());
+   }
+
+   public void readEntityFromNBT(QQ compound) {
+      super.readEntityFromNBT(compound);
+      this.setInvulTime(compound.getInteger("Invul"));
+      if (this.hasCustomName()) {
+         this.bossInfo.setName(this.getDisplayName());
+      }
+
+   }
+
+   public void setCustomNameTag(String name) {
+      super.setCustomNameTag(name);
+      this.bossInfo.setName(this.getDisplayName());
+   }
+
+   protected SoundEvent getAmbientSound() {
+      return NO.ENTITY_WITHER_AMBIENT;
+   }
+
+   protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
+      return NO.ENTITY_WITHER_HURT;
+   }
+
+   protected SoundEvent getDeathSound() {
+      return NO.ENTITY_WITHER_DEATH;
+   }
+
+   public void onLivingUpdate() {
+      this.motionY *= 0.6000000238418579;
+      double d11;
+      double d12;
+      double d13;
+      if (!this.world.isRemote && this.getWatchedTargetId(0) > 0) {
+         Ig entity = this.world.getEntityByID(this.getWatchedTargetId(0));
+         if (entity != null) {
+            if (this.posY < entity.posY || !this.isArmored() && this.posY < entity.posY + 5.0) {
+               if (this.motionY < 0.0) {
+                  this.motionY = 0.0;
+               }
+
+               this.motionY += (0.5 - this.motionY) * 0.6000000238418579;
+            }
+
+            double d0 = entity.posX - this.posX;
+            d11 = entity.posZ - this.posZ;
+            d12 = d0 * d0 + d11 * d11;
+            if (d12 > 9.0) {
+               d13 = (double)MathHelper.sqrt(d12);
+               this.motionX += (d0 / d13 * 0.5 - this.motionX) * 0.6000000238418579;
+               this.motionZ += (d11 / d13 * 0.5 - this.motionZ) * 0.6000000238418579;
+            }
+         }
+      }
+
+      if (this.motionX * this.motionX + this.motionZ * this.motionZ > 0.05000000074505806) {
+         this.rotationYaw = (float)MathHelper.atan2(this.motionZ, this.motionX) * 57.295776F - 90.0F;
+      }
+
+      super.onLivingUpdate();
+
+      int j;
+      for(j = 0; j < 2; ++j) {
+         this.yRotOHeads[j] = this.yRotationHeads[j];
+         this.xRotOHeads[j] = this.xRotationHeads[j];
+      }
+
+      int i1;
+      for(j = 0; j < 2; ++j) {
+         i1 = this.getWatchedTargetId(j + 1);
+         Ig entity1 = null;
+         if (i1 > 0) {
+            entity1 = this.world.getEntityByID(i1);
+         }
+
+         if (entity1 != null) {
+            d11 = this.getHeadX(j + 1);
+            d12 = this.getHeadY(j + 1);
+            d13 = this.getHeadZ(j + 1);
+            double d6 = entity1.posX - d11;
+            double d7 = entity1.posY + (double)entity1.getEyeHeight() - d12;
+            double d8 = entity1.posZ - d13;
+            double d9 = (double)MathHelper.sqrt(d6 * d6 + d8 * d8);
+            float f = (float)(MathHelper.atan2(d8, d6) * 57.29577951308232) - 90.0F;
+            float f1 = (float)(-(MathHelper.atan2(d7, d9) * 57.29577951308232));
+            this.xRotationHeads[j] = this.rotlerp(this.xRotationHeads[j], f1, 40.0F);
+            this.yRotationHeads[j] = this.rotlerp(this.yRotationHeads[j], f, 10.0F);
+         } else {
+            this.yRotationHeads[j] = this.rotlerp(this.yRotationHeads[j], this.renderYawOffset, 10.0F);
+         }
+      }
+
+      boolean flag = this.isArmored();
+
+      for(i1 = 0; i1 < 3; ++i1) {
+         double d10 = this.getHeadX(i1);
+         double d2 = this.getHeadY(i1);
+         double d4 = this.getHeadZ(i1);
+         this.world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, d10 + this.rand.nextGaussian() * 0.30000001192092896, d2 + this.rand.nextGaussian() * 0.30000001192092896, d4 + this.rand.nextGaussian() * 0.30000001192092896, 0.0, 0.0, 0.0);
+         if (flag && this.world.rand.nextInt(4) == 0) {
+            this.world.spawnParticle(EnumParticleTypes.SPELL_MOB, d10 + this.rand.nextGaussian() * 0.30000001192092896, d2 + this.rand.nextGaussian() * 0.30000001192092896, d4 + this.rand.nextGaussian() * 0.30000001192092896, 0.699999988079071, 0.699999988079071, 0.5);
+         }
+      }
+
+      if (this.getInvulTime() > 0) {
+         for(i1 = 0; i1 < 3; ++i1) {
+            this.world.spawnParticle(EnumParticleTypes.SPELL_MOB, this.posX + this.rand.nextGaussian(), this.posY + (double)(this.rand.nextFloat() * 3.3F), this.posZ + this.rand.nextGaussian(), 0.699999988079071, 0.699999988079071, 0.8999999761581421);
+         }
+      }
+
+   }
+
+   protected void updateAITasks() {
+      int i;
+      if (this.getInvulTime() > 0) {
+         i = this.getInvulTime() - 1;
+         if (i <= 0) {
+            this.world.newExplosion(this, this.posX, this.posY + (double)this.getEyeHeight(), this.posZ, 7.0F, false, this.world.getGameRules().getBoolean("mobGriefing"));
+            this.world.playBroadcastSound(1023, new BlockPos(this), 0);
+         }
+
+         this.setInvulTime(i);
+         if (this.ticksExisted % 10 == 0) {
+            this.heal(10.0F);
+         }
+      } else {
+         super.updateAITasks();
+
+         int l1;
+         int i2;
+         for(i = 1; i < 3; ++i) {
+            if (this.ticksExisted >= this.nextHeadUpdate[i - 1]) {
+               this.nextHeadUpdate[i - 1] = this.ticksExisted + 10 + this.rand.nextInt(10);
+               if (this.world.getDifficulty() == baV.NORMAL || this.world.getDifficulty() == baV.HARD) {
+                  l1 = i - 1;
+                  i2 = this.idleHeadUpdates[i - 1];
+                  this.idleHeadUpdates[l1] = this.idleHeadUpdates[i - 1] + 1;
+                  if (i2 > 15) {
+                     float f = 10.0F;
+                     float f1 = 5.0F;
+                     double d0 = MathHelper.nextDouble(this.rand, this.posX - 10.0, this.posX + 10.0);
+                     double d1 = MathHelper.nextDouble(this.rand, this.posY - 5.0, this.posY + 5.0);
+                     double d2 = MathHelper.nextDouble(this.rand, this.posZ - 10.0, this.posZ + 10.0);
+                     this.launchWitherSkullToCoords(i + 1, d0, d1, d2, true);
+                     this.idleHeadUpdates[i - 1] = 0;
+                  }
+               }
+
+               l1 = this.getWatchedTargetId(i);
+               if (l1 > 0) {
+                  Ig entity = this.world.getEntityByID(l1);
+                  if (entity != null && entity.isEntityAlive() && this.getDistanceSq(entity) <= 900.0 && this.canEntityBeSeen(entity)) {
+                     if (entity instanceof ME && ((ME)entity).capabilities.disableDamage) {
+                        this.updateWatchedTargetId(i, 0);
+                     } else {
+                        this.launchWitherSkullToEntity(i + 1, (Iw)entity);
+                        this.nextHeadUpdate[i - 1] = this.ticksExisted + 40 + this.rand.nextInt(20);
+                        this.idleHeadUpdates[i - 1] = 0;
+                     }
+                  } else {
+                     this.updateWatchedTargetId(i, 0);
+                  }
+               } else {
+                  List<Iw> list = this.world.getEntitiesWithinAABB(Iw.class, this.getEntityBoundingBox().grow(20.0, 8.0, 20.0), Predicates.and(NOT_UNDEAD, EntitySelectors.NOT_SPECTATING));
+
+                  for(int j2 = 0; j2 < 10 && !list.isEmpty(); ++j2) {
+                     Iw entitylivingbase = (Iw)list.get(this.rand.nextInt(list.size()));
+                     if (entitylivingbase != this && entitylivingbase.isEntityAlive() && this.canEntityBeSeen(entitylivingbase)) {
+                        if (entitylivingbase instanceof ME) {
+                           if (!((ME)entitylivingbase).capabilities.disableDamage) {
+                              this.updateWatchedTargetId(i, entitylivingbase.getEntityId());
+                           }
+                        } else {
+                           this.updateWatchedTargetId(i, entitylivingbase.getEntityId());
+                        }
+                        break;
+                     }
+
+                     list.remove(entitylivingbase);
+                  }
+               }
+            }
+         }
+
+         if (this.getAttackTarget() != null) {
+            this.updateWatchedTargetId(0, this.getAttackTarget().getEntityId());
+         } else {
+            this.updateWatchedTargetId(0, 0);
+         }
+
+         if (this.blockBreakCounter > 0) {
+            --this.blockBreakCounter;
+            if (this.blockBreakCounter == 0 && this.world.getGameRules().getBoolean("mobGriefing")) {
+               i = MathHelper.floor(this.posY);
+               l1 = MathHelper.floor(this.posX);
+               i2 = MathHelper.floor(this.posZ);
+               boolean flag = false;
+               int k2 = -1;
+
+               while(true) {
+                  if (k2 > 1) {
+                     if (flag) {
+                        this.world.playEvent((ME)null, 1022, new BlockPos(this), 0);
+                     }
+                     break;
+                  }
+
+                  for(int l2 = -1; l2 <= 1; ++l2) {
+                     for(int j = 0; j <= 3; ++j) {
+                        int i3 = l1 + k2;
+                        int k = i + j;
+                        int l = i2 + l2;
+                        BlockPos blockpos = new BlockPos(i3, k, l);
+                        in iblockstate = this.world.getBlockState(blockpos);
+                        co block = iblockstate.getBlock();
+                        if (iblockstate.getMaterial() != hM.AIR && canDestroyBlock(block)) {
+                           flag = this.world.destroyBlock(blockpos, true) || flag;
+                        }
+                     }
+                  }
+
+                  ++k2;
+               }
+            }
+         }
+
+         if (this.ticksExisted % 20 == 0) {
+            this.heal(1.0F);
+         }
+
+         this.bossInfo.setPercent(this.getHealth() / this.getMaxHealth());
+      }
+
+   }
+
+   public static boolean canDestroyBlock(co blockIn) {
+      return blockIn != Nk.BEDROCK && blockIn != Nk.END_PORTAL && blockIn != Nk.END_PORTAL_FRAME && blockIn != Nk.COMMAND_BLOCK && blockIn != Nk.REPEATING_COMMAND_BLOCK && blockIn != Nk.CHAIN_COMMAND_BLOCK && blockIn != Nk.BARRIER && blockIn != Nk.STRUCTURE_BLOCK && blockIn != Nk.STRUCTURE_VOID && blockIn != Nk.PISTON_EXTENSION && blockIn != Nk.END_GATEWAY;
+   }
+
+   public void ignite() {
+      this.setInvulTime(220);
+      this.setHealth(this.getMaxHealth() / 3.0F);
+   }
+
+   public void setInWeb() {
+   }
+
+   public void addTrackingPlayer(MG player) {
+      super.addTrackingPlayer(player);
+      this.bossInfo.addPlayer(player);
+   }
+
+   public void removeTrackingPlayer(MG player) {
+      super.removeTrackingPlayer(player);
+      this.bossInfo.removePlayer(player);
+   }
+
+   private double getHeadX(int p_82214_1_) {
+      if (p_82214_1_ <= 0) {
+         return this.posX;
+      } else {
+         float f = (this.renderYawOffset + (float)(180 * (p_82214_1_ - 1))) * 0.017453292F;
+         float f1 = MathHelper.cos(f);
+         return this.posX + (double)f1 * 1.3;
+      }
+   }
+
+   private double getHeadY(int p_82208_1_) {
+      return p_82208_1_ <= 0 ? this.posY + 3.0 : this.posY + 2.2;
+   }
+
+   private double getHeadZ(int p_82213_1_) {
+      if (p_82213_1_ <= 0) {
+         return this.posZ;
+      } else {
+         float f = (this.renderYawOffset + (float)(180 * (p_82213_1_ - 1))) * 0.017453292F;
+         float f1 = MathHelper.sin(f);
+         return this.posZ + (double)f1 * 1.3;
+      }
+   }
+
+   private float rotlerp(float p_82204_1_, float p_82204_2_, float p_82204_3_) {
+      float f = MathHelper.wrapDegrees(p_82204_2_ - p_82204_1_);
+      if (f > p_82204_3_) {
+         f = p_82204_3_;
+      }
+
+      if (f < -p_82204_3_) {
+         f = -p_82204_3_;
+      }
+
+      return p_82204_1_ + f;
+   }
+
+   private void launchWitherSkullToEntity(int p_82216_1_, Iw p_82216_2_) {
+      this.launchWitherSkullToCoords(p_82216_1_, p_82216_2_.posX, p_82216_2_.posY + (double)p_82216_2_.getEyeHeight() * 0.5, p_82216_2_.posZ, p_82216_1_ == 0 && this.rand.nextFloat() < 0.001F);
+   }
+
+   private void launchWitherSkullToCoords(int p_82209_1_, double x, double y, double z, boolean invulnerable) {
+      this.world.playEvent((ME)null, 1024, new BlockPos(this), 0);
+      double d0 = this.getHeadX(p_82209_1_);
+      double d1 = this.getHeadY(p_82209_1_);
+      double d2 = this.getHeadZ(p_82209_1_);
+      double d3 = x - d0;
+      double d4 = y - d1;
+      double d5 = z - d2;
+      Nf entitywitherskull = new Nf(this.world, this, d3, d4, d5);
+      if (invulnerable) {
+         entitywitherskull.setInvulnerable(true);
+      }
+
+      entitywitherskull.posY = d1;
+      entitywitherskull.posX = d0;
+      entitywitherskull.posZ = d2;
+      this.world.spawnEntity(entitywitherskull);
+   }
+
+   public void attackEntityWithRangedAttack(Iw target, float distanceFactor) {
+      this.launchWitherSkullToEntity(0, target);
+   }
+
+   public boolean attackEntityFrom(DamageSource source, float amount) {
+      if (this.isEntityInvulnerable(source)) {
+         return false;
+      } else if (source != DamageSource.DROWN && !(source.getTrueSource() instanceof HV)) {
+         if (this.getInvulTime() > 0 && source != DamageSource.OUT_OF_WORLD) {
+            return false;
+         } else {
+            Ig entity1;
+            if (this.isArmored()) {
+               entity1 = source.getImmediateSource();
+               if (entity1 instanceof MO) {
+                  return false;
+               }
+            }
+
+            entity1 = source.getTrueSource();
+            if (entity1 != null && !(entity1 instanceof ME) && entity1 instanceof Iw && ((Iw)entity1).getCreatureAttribute() == this.getCreatureAttribute()) {
+               return false;
+            } else {
+               if (this.blockBreakCounter <= 0) {
+                  this.blockBreakCounter = 20;
+               }
+
+               for(int i = 0; i < this.idleHeadUpdates.length; ++i) {
+                  int[] var10000 = this.idleHeadUpdates;
+                  var10000[i] += 3;
+               }
+
+               return super.attackEntityFrom(source, amount);
+            }
+         }
+      } else {
+         return false;
+      }
+   }
+
+   protected void dropFewItems(boolean wasRecentlyHit, int lootingModifier) {
+      IY entityitem = this.dropItem(NK.NETHER_STAR, 1);
+      if (entityitem != null) {
+         entityitem.setNoDespawn();
+      }
+
+   }
+
+   protected void despawnEntity() {
+      this.idleTime = 0;
+   }
+
+   public int getBrightnessForRender() {
+      return 15728880;
+   }
+
+   public void fall(float distance, float damageMultiplier) {
+   }
+
+   public void addPotionEffect(VZ potioneffectIn) {
+   }
+
+   protected void applyEntityAttributes() {
+      super.applyEntityAttributes();
+      this.getEntityAttribute(Ni.MAX_HEALTH).setBaseValue(300.0);
+      this.getEntityAttribute(Ni.MOVEMENT_SPEED).setBaseValue(0.6000000238418579);
+      this.getEntityAttribute(Ni.FOLLOW_RANGE).setBaseValue(40.0);
+      this.getEntityAttribute(Ni.ARMOR).setBaseValue(4.0);
+   }
+
+   public float getHeadYRotation(int p_82207_1_) {
+      return this.yRotationHeads[p_82207_1_];
+   }
+
+   public float getHeadXRotation(int p_82210_1_) {
+      return this.xRotationHeads[p_82210_1_];
+   }
+
+   public int getInvulTime() {
+      return (Integer)this.dataManager.get(INVULNERABILITY_TIME);
+   }
+
+   public void setInvulTime(int time) {
+      this.dataManager.set(INVULNERABILITY_TIME, time);
+   }
+
+   public int getWatchedTargetId(int head) {
+      return (Integer)this.dataManager.get(HEAD_TARGETS[head]);
+   }
+
+   public void updateWatchedTargetId(int targetOffset, int newId) {
+      this.dataManager.set(HEAD_TARGETS[targetOffset], newId);
+   }
+
+   public boolean isArmored() {
+      return this.getHealth() <= this.getMaxHealth() / 2.0F;
+   }
+
+   public IB getCreatureAttribute() {
+      return IB.UNDEAD;
+   }
+
+   protected boolean canBeRidden(Ig entityIn) {
+      return false;
+   }
+
+   public boolean isNonBoss() {
+      return false;
+   }
+
+   public void setSwingingArms(boolean swingingArms) {
+   }
+
+   static {
+      FIRST_HEAD_TARGET = Rv.createKey(HV.class, Rt.VARINT);
+      SECOND_HEAD_TARGET = Rv.createKey(HV.class, Rt.VARINT);
+      THIRD_HEAD_TARGET = Rv.createKey(HV.class, Rt.VARINT);
+      HEAD_TARGETS = new Rd[]{FIRST_HEAD_TARGET, SECOND_HEAD_TARGET, THIRD_HEAD_TARGET};
+      INVULNERABILITY_TIME = Rv.createKey(HV.class, Rt.VARINT);
+      NOT_UNDEAD = new Predicate<Ig>() {
+         public boolean apply(@Nullable Ig p_apply_1_) {
+            return p_apply_1_ instanceof Iw && ((Iw)p_apply_1_).getCreatureAttribute() != IB.UNDEAD && ((Iw)p_apply_1_).attackable();
+         }
+
+         // $FF: synthetic method
+         // $FF: bridge method
+         public boolean apply(@Nullable Object var1) {
+            return this.apply((Ig)var1);
+         }
+      };
+   }
+}

@@ -1,0 +1,161 @@
+package neo;
+
+import java.util.Random;
+import javax.annotation.Nullable;
+import net.minecraft.util.Mirror;
+import net.minecraft.util.Rotation;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
+
+public class bfD {
+   private Mirror mirror;
+   private Rotation rotation;
+   private boolean ignoreEntities;
+   @Nullable
+   private co replacedBlock;
+   @Nullable
+   private ChunkPos chunk;
+   @Nullable
+   private bdy boundingBox;
+   private boolean ignoreStructureBlock;
+   private float integrity;
+   @Nullable
+   private Random random;
+   @Nullable
+   private Long setSeed;
+
+   public bfD() {
+      this.mirror = Mirror.NONE;
+      this.rotation = Rotation.NONE;
+      this.ignoreStructureBlock = true;
+      this.integrity = 1.0F;
+   }
+
+   public bfD copy() {
+      bfD placementsettings = new bfD();
+      placementsettings.mirror = this.mirror;
+      placementsettings.rotation = this.rotation;
+      placementsettings.ignoreEntities = this.ignoreEntities;
+      placementsettings.replacedBlock = this.replacedBlock;
+      placementsettings.chunk = this.chunk;
+      placementsettings.boundingBox = this.boundingBox;
+      placementsettings.ignoreStructureBlock = this.ignoreStructureBlock;
+      placementsettings.integrity = this.integrity;
+      placementsettings.random = this.random;
+      placementsettings.setSeed = this.setSeed;
+      return placementsettings;
+   }
+
+   public bfD setMirror(Mirror mirrorIn) {
+      this.mirror = mirrorIn;
+      return this;
+   }
+
+   public bfD setRotation(Rotation rotationIn) {
+      this.rotation = rotationIn;
+      return this;
+   }
+
+   public bfD setIgnoreEntities(boolean ignoreEntitiesIn) {
+      this.ignoreEntities = ignoreEntitiesIn;
+      return this;
+   }
+
+   public bfD setReplacedBlock(co replacedBlockIn) {
+      this.replacedBlock = replacedBlockIn;
+      return this;
+   }
+
+   public bfD setChunk(ChunkPos chunkPosIn) {
+      this.chunk = chunkPosIn;
+      return this;
+   }
+
+   public bfD setBoundingBox(bdy boundingBoxIn) {
+      this.boundingBox = boundingBoxIn;
+      return this;
+   }
+
+   public bfD setSeed(@Nullable Long seedIn) {
+      this.setSeed = seedIn;
+      return this;
+   }
+
+   public bfD setRandom(@Nullable Random randomIn) {
+      this.random = randomIn;
+      return this;
+   }
+
+   public bfD setIntegrity(float integrityIn) {
+      this.integrity = integrityIn;
+      return this;
+   }
+
+   public Mirror getMirror() {
+      return this.mirror;
+   }
+
+   public bfD setIgnoreStructureBlock(boolean ignoreStructureBlockIn) {
+      this.ignoreStructureBlock = ignoreStructureBlockIn;
+      return this;
+   }
+
+   public Rotation getRotation() {
+      return this.rotation;
+   }
+
+   public Random getRandom(@Nullable BlockPos seed) {
+      if (this.random != null) {
+         return this.random;
+      } else if (this.setSeed != null) {
+         return this.setSeed == 0L ? new Random(System.currentTimeMillis()) : new Random(this.setSeed);
+      } else if (seed == null) {
+         return new Random(System.currentTimeMillis());
+      } else {
+         int i = seed.getX();
+         int j = seed.getZ();
+         return new Random((long)(i * i * 4987142 + i * 5947611) + (long)(j * j) * 4392871L + (long)(j * 389711) ^ 987234911L);
+      }
+   }
+
+   public float getIntegrity() {
+      return this.integrity;
+   }
+
+   public boolean getIgnoreEntities() {
+      return this.ignoreEntities;
+   }
+
+   @Nullable
+   public co getReplacedBlock() {
+      return this.replacedBlock;
+   }
+
+   @Nullable
+   public bdy getBoundingBox() {
+      if (this.boundingBox == null && this.chunk != null) {
+         this.setBoundingBoxFromChunk();
+      }
+
+      return this.boundingBox;
+   }
+
+   public boolean getIgnoreStructureBlock() {
+      return this.ignoreStructureBlock;
+   }
+
+   void setBoundingBoxFromChunk() {
+      this.boundingBox = this.getBoundingBoxFromChunk(this.chunk);
+   }
+
+   @Nullable
+   private bdy getBoundingBoxFromChunk(@Nullable ChunkPos pos) {
+      if (pos == null) {
+         return null;
+      } else {
+         int i = pos.x * 16;
+         int j = pos.z * 16;
+         return new bdy(i, 0, j, i + 16 - 1, 255, j + 16 - 1);
+      }
+   }
+}

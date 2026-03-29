@@ -1,0 +1,21 @@
+package net.minecraft.util.datafix.fixes;
+
+import neo.QQ;
+import net.minecraft.util.datafix.IFixableData;
+
+public class ShulkerBoxEntityColor implements IFixableData {
+   public ShulkerBoxEntityColor() {
+   }
+
+   public int getFixVersion() {
+      return 808;
+   }
+
+   public QQ fixTagCompound(QQ compound) {
+      if ("minecraft:shulker".equals(compound.getString("id")) && !compound.hasKey("Color", 99)) {
+         compound.setByte("Color", (byte)10);
+      }
+
+      return compound;
+   }
+}

@@ -1,0 +1,11 @@
+package neo;
+
+public class bmm extends jK {
+   public bmm(int buttonId, int x, int y, int widthIn, int heightIn, String buttonText) {
+      super(buttonId, x, y, widthIn, heightIn, buttonText);
+   }
+
+   public bmm(int buttonId, int x, int y, String buttonText) {
+      super(buttonId, x, y, buttonText);
+   }
+}

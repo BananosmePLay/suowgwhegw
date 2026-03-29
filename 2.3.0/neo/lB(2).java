@@ -1,0 +1,143 @@
+package neo;
+
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.MathHelper;
+
+public class lB extends jI implements mR {
+   private static final ResourceLocation WIDGETS = new ResourceLocation("textures/gui/widgets.png");
+   public static final ResourceLocation SPECTATOR_WIDGETS = new ResourceLocation("textures/gui/spectator_widgets.png");
+   private final nC mc;
+   private long lastSelectionTime;
+   private mY menu;
+
+   public lB(nC mcIn) {
+      this.mc = mcIn;
+   }
+
+   public void onHotbarSelected(int p_175260_1_) {
+      this.lastSelectionTime = nC.getSystemTime();
+      if (this.menu != null) {
+         this.menu.selectSlot(p_175260_1_);
+      } else {
+         this.menu = new mY(this);
+      }
+
+   }
+
+   private float getHotbarAlpha() {
+      long i = this.lastSelectionTime - nC.getSystemTime() + 5000L;
+      return MathHelper.clamp((float)i / 2000.0F, 0.0F, 1.0F);
+   }
+
+   public void renderTooltip(mC p_175264_1_, float p_175264_2_) {
+      if (this.menu != null) {
+         float f = this.getHotbarAlpha();
+         if (f <= 0.0F) {
+            this.menu.exit();
+         } else {
+            int i = p_175264_1_.getScaledWidth() / 2;
+            float f1 = this.zLevel;
+            this.zLevel = -90.0F;
+            float f2 = (float)p_175264_1_.getScaledHeight() - 22.0F * f;
+            mL spectatordetails = this.menu.getCurrentPage();
+            this.renderPage(p_175264_1_, f, i, f2, spectatordetails);
+            this.zLevel = f1;
+         }
+      }
+
+   }
+
+   protected void renderPage(mC p_175258_1_, float p_175258_2_, int p_175258_3_, float p_175258_4_, mL p_175258_5_) {
+      yh.enableRescaleNormal();
+      yh.enableBlend();
+      yh.tryBlendFuncSeparate(ya.SRC_ALPHA, xR.ONE_MINUS_SRC_ALPHA, ya.ONE, xR.ZERO);
+      yh.color(1.0F, 1.0F, 1.0F, p_175258_2_);
+      this.mc.getTextureManager().bindTexture(WIDGETS);
+      this.drawTexturedModalRect((float)(p_175258_3_ - 91), p_175258_4_, 0, 0, 182, 22);
+      if (p_175258_5_.getSelectedSlot() >= 0) {
+         this.drawTexturedModalRect((float)(p_175258_3_ - 91 - 1 + p_175258_5_.getSelectedSlot() * 20), p_175258_4_ - 1.0F, 0, 22, 24, 22);
+      }
+
+      yz.enableGUIStandardItemLighting();
+
+      for(int i = 0; i < 9; ++i) {
+         this.renderSlot(i, p_175258_1_.getScaledWidth() / 2 - 90 + i * 20 + 2, p_175258_4_ + 3.0F, p_175258_2_, p_175258_5_.getObject(i));
+      }
+
+      yz.disableStandardItemLighting();
+      yh.disableRescaleNormal();
+      yh.disableBlend();
+   }
+
+   private void renderSlot(int p_175266_1_, int p_175266_2_, float p_175266_3_, float p_175266_4_, mQ p_175266_5_) {
+      this.mc.getTextureManager().bindTexture(SPECTATOR_WIDGETS);
+      if (p_175266_5_ != mY.EMPTY_SLOT) {
+         int i = (int)(p_175266_4_ * 255.0F);
+         yh.pushMatrix();
+         yh.translate((float)p_175266_2_, p_175266_3_, 0.0F);
+         float f = p_175266_5_.isEnabled() ? 1.0F : 0.25F;
+         yh.color(f, f, f, p_175266_4_);
+         p_175266_5_.renderIcon(f, i);
+         yh.popMatrix();
+         nC var10000 = this.mc;
+         String s = String.valueOf(Bj.getKeyDisplayString(nC.gameSettings.keyBindsHotbar[p_175266_1_].getKeyCode()));
+         if (i > 3 && p_175266_5_.isEnabled()) {
+            this.mc.fontRenderer.drawStringWithShadow(s, (float)(p_175266_2_ + 19 - 2 - this.mc.fontRenderer.getStringWidth(s)), p_175266_3_ + 6.0F + 3.0F, 16777215 + (i << 24));
+         }
+      }
+
+   }
+
+   public void renderSelectedItem(mC p_175263_1_) {
+      int i = (int)(this.getHotbarAlpha() * 255.0F);
+      if (i > 3 && this.menu != null) {
+         mQ ispectatormenuobject = this.menu.getSelectedItem();
+         String s = ispectatormenuobject == mY.EMPTY_SLOT ? this.menu.getSelectedCategory().getPrompt().getFormattedText() : ispectatormenuobject.getSpectatorName().getFormattedText();
+         if (s != null) {
+            int j = (p_175263_1_.getScaledWidth() - this.mc.fontRenderer.getStringWidth(s)) / 2;
+            int k = p_175263_1_.getScaledHeight() - 35;
+            yh.pushMatrix();
+            yh.enableBlend();
+            yh.tryBlendFuncSeparate(ya.SRC_ALPHA, xR.ONE_MINUS_SRC_ALPHA, ya.ONE, xR.ZERO);
+            this.mc.fontRenderer.drawStringWithShadow(s, (float)j, (float)k, 16777215 + (i << 24));
+            yh.disableBlend();
+            yh.popMatrix();
+         }
+      }
+
+   }
+
+   public void onSpectatorMenuClosed(mY menu) {
+      this.menu = null;
+      this.lastSelectionTime = 0L;
+   }
+
+   public boolean isMenuActive() {
+      return this.menu != null;
+   }
+
+   public void onMouseScroll(int p_175259_1_) {
+      int i;
+      for(i = this.menu.getSelectedSlot() + p_175259_1_; i >= 0 && i <= 8 && (this.menu.getItem(i) == mY.EMPTY_SLOT || !this.menu.getItem(i).isEnabled()); i += p_175259_1_) {
+      }
+
+      if (i >= 0 && i <= 8) {
+         this.menu.selectSlot(i);
+         this.lastSelectionTime = nC.getSystemTime();
+      }
+
+   }
+
+   public void onMiddleClick() {
+      this.lastSelectionTime = nC.getSystemTime();
+      if (this.isMenuActive()) {
+         int i = this.menu.getSelectedSlot();
+         if (i != -1) {
+            this.menu.selectSlot(i);
+         }
+      } else {
+         this.menu = new mY(this);
+      }
+
+   }
+}

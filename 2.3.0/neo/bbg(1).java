@@ -1,0 +1,481 @@
+package neo;
+
+import java.util.List;
+import java.util.Random;
+import javax.annotation.Nullable;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.MathHelper;
+
+public class bbg implements bcn {
+   protected static final in STONE;
+   private final Random rand;
+   private final bcS minLimitPerlinNoise;
+   private final bcS maxLimitPerlinNoise;
+   private final bcS mainPerlinNoise;
+   private final bcT surfaceNoise;
+   public bcS scaleNoise;
+   public bcS depthNoise;
+   public bcS forestNoise;
+   private final bij world;
+   private final boolean mapFeaturesEnabled;
+   private final bix terrainType;
+   private final double[] heightMap;
+   private final float[] biomeWeights;
+   private bbk settings;
+   private in oceanBlock;
+   private double[] depthBuffer;
+   private final bcM caveGenerator;
+   private final bdn strongholdGenerator;
+   private final bdv villageGenerator;
+   private final bdh mineshaftGenerator;
+   private final bdl scatteredFeatureGenerator;
+   private final bcM ravineGenerator;
+   private final ben oceanMonumentGenerator;
+   private final bfN woodlandMansionGenerator;
+   private Zi[] biomesForGeneration;
+   double[] mainNoiseRegion;
+   double[] minLimitRegion;
+   double[] maxLimitRegion;
+   double[] depthRegion;
+
+   public bbg(bij worldIn, long seed, boolean mapFeaturesEnabledIn, String generatorOptions) {
+      this.oceanBlock = Nk.WATER.getDefaultState();
+      this.depthBuffer = new double[256];
+      this.caveGenerator = new bcN();
+      this.strongholdGenerator = new bdn();
+      this.villageGenerator = new bdv();
+      this.mineshaftGenerator = new bdh();
+      this.scatteredFeatureGenerator = new bdl();
+      this.ravineGenerator = new bcP();
+      this.oceanMonumentGenerator = new ben();
+      this.woodlandMansionGenerator = new bfN(this);
+      this.world = worldIn;
+      this.mapFeaturesEnabled = mapFeaturesEnabledIn;
+      this.terrainType = worldIn.getWorldInfo().getTerrainType();
+      this.rand = new Random(seed);
+      this.minLimitPerlinNoise = new bcS(this.rand, 16);
+      this.maxLimitPerlinNoise = new bcS(this.rand, 16);
+      this.mainPerlinNoise = new bcS(this.rand, 8);
+      this.surfaceNoise = new bcT(this.rand, 4);
+      this.scaleNoise = new bcS(this.rand, 10);
+      this.depthNoise = new bcS(this.rand, 16);
+      this.forestNoise = new bcS(this.rand, 8);
+      this.heightMap = new double[825];
+      this.biomeWeights = new float[25];
+
+      for(int i = -2; i <= 2; ++i) {
+         for(int j = -2; j <= 2; ++j) {
+            float f = 10.0F / MathHelper.sqrt((float)(i * i + j * j) + 0.2F);
+            this.biomeWeights[i + 2 + (j + 2) * 5] = f;
+         }
+      }
+
+      if (generatorOptions != null) {
+         this.settings = bbi.jsonToFactory(generatorOptions).build();
+         this.oceanBlock = this.settings.useLavaOceans ? Nk.LAVA.getDefaultState() : Nk.WATER.getDefaultState();
+         worldIn.setSeaLevel(this.settings.seaLevel);
+      }
+
+   }
+
+   public void setBlocksInChunk(int x, int z, ban primer) {
+      this.biomesForGeneration = this.world.getBiomeProvider().getBiomesForGeneration(this.biomesForGeneration, x * 4 - 2, z * 4 - 2, 10, 10);
+      this.generateHeightmap(x * 4, 0, z * 4);
+
+      for(int i = 0; i < 4; ++i) {
+         int j = i * 5;
+         int k = (i + 1) * 5;
+
+         for(int l = 0; l < 4; ++l) {
+            int i1 = (j + l) * 33;
+            int j1 = (j + l + 1) * 33;
+            int k1 = (k + l) * 33;
+            int l1 = (k + l + 1) * 33;
+
+            for(int i2 = 0; i2 < 32; ++i2) {
+               double d0 = 0.125;
+               double d1 = this.heightMap[i1 + i2];
+               double d2 = this.heightMap[j1 + i2];
+               double d3 = this.heightMap[k1 + i2];
+               double d4 = this.heightMap[l1 + i2];
+               double d5 = (this.heightMap[i1 + i2 + 1] - d1) * 0.125;
+               double d6 = (this.heightMap[j1 + i2 + 1] - d2) * 0.125;
+               double d7 = (this.heightMap[k1 + i2 + 1] - d3) * 0.125;
+               double d8 = (this.heightMap[l1 + i2 + 1] - d4) * 0.125;
+
+               for(int j2 = 0; j2 < 8; ++j2) {
+                  double d9 = 0.25;
+                  double d10 = d1;
+                  double d11 = d2;
+                  double d12 = (d3 - d1) * 0.25;
+                  double d13 = (d4 - d2) * 0.25;
+
+                  for(int k2 = 0; k2 < 4; ++k2) {
+                     double d14 = 0.25;
+                     double d16 = (d11 - d10) * 0.25;
+                     double lvt_45_1_ = d10 - d16;
+
+                     for(int l2 = 0; l2 < 4; ++l2) {
+                        if ((lvt_45_1_ += d16) > 0.0) {
+                           primer.setBlockState(i * 4 + k2, i2 * 8 + j2, l * 4 + l2, STONE);
+                        } else if (i2 * 8 + j2 < this.settings.seaLevel) {
+                           primer.setBlockState(i * 4 + k2, i2 * 8 + j2, l * 4 + l2, this.oceanBlock);
+                        }
+                     }
+
+                     d10 += d12;
+                     d11 += d13;
+                  }
+
+                  d1 += d5;
+                  d2 += d6;
+                  d3 += d7;
+                  d4 += d8;
+               }
+            }
+         }
+      }
+
+   }
+
+   public void replaceBiomeBlocks(int x, int z, ban primer, Zi[] biomesIn) {
+      double d0 = 0.03125;
+      this.depthBuffer = this.surfaceNoise.getRegion(this.depthBuffer, (double)(x * 16), (double)(z * 16), 16, 16, 0.0625, 0.0625, 1.0);
+
+      for(int i = 0; i < 16; ++i) {
+         for(int j = 0; j < 16; ++j) {
+            Zi biome = biomesIn[j + i * 16];
+            biome.genTerrainBlocks(this.world, this.rand, primer, x * 16 + i, z * 16 + j, this.depthBuffer[j + i * 16]);
+         }
+      }
+
+   }
+
+   public bam generateChunk(int x, int z) {
+      this.rand.setSeed((long)x * 341873128712L + (long)z * 132897987541L);
+      ban chunkprimer = new ban();
+      this.setBlocksInChunk(x, z, chunkprimer);
+      this.biomesForGeneration = this.world.getBiomeProvider().getBiomes(this.biomesForGeneration, x * 16, z * 16, 16, 16);
+      this.replaceBiomeBlocks(x, z, chunkprimer, this.biomesForGeneration);
+      if (this.settings.useCaves) {
+         this.caveGenerator.generate(this.world, x, z, chunkprimer);
+      }
+
+      if (this.settings.useRavines) {
+         this.ravineGenerator.generate(this.world, x, z, chunkprimer);
+      }
+
+      if (this.mapFeaturesEnabled) {
+         if (this.settings.useMineShafts) {
+            this.mineshaftGenerator.generate(this.world, x, z, chunkprimer);
+         }
+
+         if (this.settings.useVillages) {
+            this.villageGenerator.generate(this.world, x, z, chunkprimer);
+         }
+
+         if (this.settings.useStrongholds) {
+            this.strongholdGenerator.generate(this.world, x, z, chunkprimer);
+         }
+
+         if (this.settings.useTemples) {
+            this.scatteredFeatureGenerator.generate(this.world, x, z, chunkprimer);
+         }
+
+         if (this.settings.useMonuments) {
+            this.oceanMonumentGenerator.generate(this.world, x, z, chunkprimer);
+         }
+
+         if (this.settings.useMansions) {
+            this.woodlandMansionGenerator.generate(this.world, x, z, chunkprimer);
+         }
+      }
+
+      bam chunk = new bam(this.world, chunkprimer, x, z);
+      byte[] abyte = chunk.getBiomeArray();
+
+      for(int i = 0; i < abyte.length; ++i) {
+         abyte[i] = (byte)Zi.getIdForBiome(this.biomesForGeneration[i]);
+      }
+
+      chunk.generateSkylightMap();
+      return chunk;
+   }
+
+   private void generateHeightmap(int x, int y, int z) {
+      this.depthRegion = this.depthNoise.generateNoiseOctaves(this.depthRegion, x, z, 5, 5, (double)this.settings.depthNoiseScaleX, (double)this.settings.depthNoiseScaleZ, (double)this.settings.depthNoiseScaleExponent);
+      float f = this.settings.coordinateScale;
+      float f1 = this.settings.heightScale;
+      this.mainNoiseRegion = this.mainPerlinNoise.generateNoiseOctaves(this.mainNoiseRegion, x, y, z, 5, 33, 5, (double)(f / this.settings.mainNoiseScaleX), (double)(f1 / this.settings.mainNoiseScaleY), (double)(f / this.settings.mainNoiseScaleZ));
+      this.minLimitRegion = this.minLimitPerlinNoise.generateNoiseOctaves(this.minLimitRegion, x, y, z, 5, 33, 5, (double)f, (double)f1, (double)f);
+      this.maxLimitRegion = this.maxLimitPerlinNoise.generateNoiseOctaves(this.maxLimitRegion, x, y, z, 5, 33, 5, (double)f, (double)f1, (double)f);
+      int i = 0;
+      int j = 0;
+
+      for(int k = 0; k < 5; ++k) {
+         for(int l = 0; l < 5; ++l) {
+            float f2 = 0.0F;
+            float f3 = 0.0F;
+            float f4 = 0.0F;
+            int i1 = true;
+            Zi biome = this.biomesForGeneration[k + 2 + (l + 2) * 10];
+
+            for(int j1 = -2; j1 <= 2; ++j1) {
+               for(int k1 = -2; k1 <= 2; ++k1) {
+                  Zi biome1 = this.biomesForGeneration[k + j1 + 2 + (l + k1 + 2) * 10];
+                  float f5 = this.settings.biomeDepthOffSet + biome1.getBaseHeight() * this.settings.biomeDepthWeight;
+                  float f6 = this.settings.biomeScaleOffset + biome1.getHeightVariation() * this.settings.biomeScaleWeight;
+                  if (this.terrainType == bix.AMPLIFIED && f5 > 0.0F) {
+                     f5 = 1.0F + f5 * 2.0F;
+                     f6 = 1.0F + f6 * 4.0F;
+                  }
+
+                  float f7 = this.biomeWeights[j1 + 2 + (k1 + 2) * 5] / (f5 + 2.0F);
+                  if (biome1.getBaseHeight() > biome.getBaseHeight()) {
+                     f7 /= 2.0F;
+                  }
+
+                  f2 += f6 * f7;
+                  f3 += f5 * f7;
+                  f4 += f7;
+               }
+            }
+
+            f2 /= f4;
+            f3 /= f4;
+            f2 = f2 * 0.9F + 0.1F;
+            f3 = (f3 * 4.0F - 1.0F) / 8.0F;
+            double d7 = this.depthRegion[j] / 8000.0;
+            if (d7 < 0.0) {
+               d7 = -d7 * 0.3;
+            }
+
+            d7 = d7 * 3.0 - 2.0;
+            if (d7 < 0.0) {
+               d7 /= 2.0;
+               if (d7 < -1.0) {
+                  d7 = -1.0;
+               }
+
+               d7 /= 1.4;
+               d7 /= 2.0;
+            } else {
+               if (d7 > 1.0) {
+                  d7 = 1.0;
+               }
+
+               d7 /= 8.0;
+            }
+
+            ++j;
+            double d8 = (double)f3;
+            double d9 = (double)f2;
+            d8 += d7 * 0.2;
+            d8 = d8 * (double)this.settings.baseSize / 8.0;
+            double d0 = (double)this.settings.baseSize + d8 * 4.0;
+
+            for(int l1 = 0; l1 < 33; ++l1) {
+               double d1 = ((double)l1 - d0) * (double)this.settings.stretchY * 128.0 / 256.0 / d9;
+               if (d1 < 0.0) {
+                  d1 *= 4.0;
+               }
+
+               double d2 = this.minLimitRegion[i] / (double)this.settings.lowerLimitScale;
+               double d3 = this.maxLimitRegion[i] / (double)this.settings.upperLimitScale;
+               double d4 = (this.mainNoiseRegion[i] / 10.0 + 1.0) / 2.0;
+               double d5 = MathHelper.clampedLerp(d2, d3, d4) - d1;
+               if (l1 > 29) {
+                  double d6 = (double)((float)(l1 - 29) / 3.0F);
+                  d5 = d5 * (1.0 - d6) + -10.0 * d6;
+               }
+
+               this.heightMap[i] = d5;
+               ++i;
+            }
+         }
+      }
+
+   }
+
+   public void populate(int x, int z) {
+      dH.fallInstantly = true;
+      int i = x * 16;
+      int j = z * 16;
+      BlockPos blockpos = new BlockPos(i, 0, j);
+      Zi biome = this.world.getBiome(blockpos.add(16, 0, 16));
+      this.rand.setSeed(this.world.getSeed());
+      long k = this.rand.nextLong() / 2L * 2L + 1L;
+      long l = this.rand.nextLong() / 2L * 2L + 1L;
+      this.rand.setSeed((long)x * k + (long)z * l ^ this.world.getSeed());
+      boolean flag = false;
+      ChunkPos chunkpos = new ChunkPos(x, z);
+      if (this.mapFeaturesEnabled) {
+         if (this.settings.useMineShafts) {
+            this.mineshaftGenerator.generateStructure(this.world, this.rand, chunkpos);
+         }
+
+         if (this.settings.useVillages) {
+            flag = this.villageGenerator.generateStructure(this.world, this.rand, chunkpos);
+         }
+
+         if (this.settings.useStrongholds) {
+            this.strongholdGenerator.generateStructure(this.world, this.rand, chunkpos);
+         }
+
+         if (this.settings.useTemples) {
+            this.scatteredFeatureGenerator.generateStructure(this.world, this.rand, chunkpos);
+         }
+
+         if (this.settings.useMonuments) {
+            this.oceanMonumentGenerator.generateStructure(this.world, this.rand, chunkpos);
+         }
+
+         if (this.settings.useMansions) {
+            this.woodlandMansionGenerator.generateStructure(this.world, this.rand, chunkpos);
+         }
+      }
+
+      int k2;
+      int j3;
+      int l3;
+      if (biome != Nj.DESERT && biome != Nj.DESERT_HILLS && this.settings.useWaterLakes && !flag && this.rand.nextInt(this.settings.waterLakeChance) == 0) {
+         k2 = this.rand.nextInt(16) + 8;
+         j3 = this.rand.nextInt(256);
+         l3 = this.rand.nextInt(16) + 8;
+         (new bbP(Nk.WATER)).generate(this.world, this.rand, blockpos.add(k2, j3, l3));
+      }
+
+      if (!flag && this.rand.nextInt(this.settings.lavaLakeChance / 10) == 0 && this.settings.useLavaLakes) {
+         k2 = this.rand.nextInt(16) + 8;
+         j3 = this.rand.nextInt(this.rand.nextInt(248) + 8);
+         l3 = this.rand.nextInt(16) + 8;
+         if (j3 < this.world.getSeaLevel() || this.rand.nextInt(this.settings.lavaLakeChance / 8) == 0) {
+            (new bbP(Nk.LAVA)).generate(this.world, this.rand, blockpos.add(k2, j3, l3));
+         }
+      }
+
+      if (this.settings.useDungeons) {
+         for(k2 = 0; k2 < this.settings.dungeonChance; ++k2) {
+            j3 = this.rand.nextInt(16) + 8;
+            l3 = this.rand.nextInt(256);
+            int l1 = this.rand.nextInt(16) + 8;
+            (new bbA()).generate(this.world, this.rand, blockpos.add(j3, l3, l1));
+         }
+      }
+
+      biome.decorate(this.world, this.rand, new BlockPos(i, 0, j));
+      bik.performWorldGenSpawning(this.world, biome, i + 8, j + 8, 16, 16, this.rand);
+      blockpos = blockpos.add(8, 0, 8);
+
+      for(k2 = 0; k2 < 16; ++k2) {
+         for(j3 = 0; j3 < 16; ++j3) {
+            BlockPos blockpos1 = this.world.getPrecipitationHeight(blockpos.add(k2, 0, j3));
+            BlockPos blockpos2 = blockpos1.down();
+            if (this.world.canBlockFreezeWater(blockpos2)) {
+               this.world.setBlockState(blockpos2, Nk.ICE.getDefaultState(), 2);
+            }
+
+            if (this.world.canSnowAt(blockpos1, true)) {
+               this.world.setBlockState(blockpos1, Nk.SNOW_LAYER.getDefaultState(), 2);
+            }
+         }
+      }
+
+      dH.fallInstantly = false;
+   }
+
+   public boolean generateStructures(bam chunkIn, int x, int z) {
+      boolean flag = false;
+      if (this.settings.useMonuments && this.mapFeaturesEnabled && chunkIn.getInhabitedTime() < 3600L) {
+         flag |= this.oceanMonumentGenerator.generateStructure(this.world, this.rand, new ChunkPos(x, z));
+      }
+
+      return flag;
+   }
+
+   public List<Zg> getPossibleCreatures(IC creatureType, BlockPos pos) {
+      Zi biome = this.world.getBiome(pos);
+      if (this.mapFeaturesEnabled) {
+         if (creatureType == IC.MONSTER && this.scatteredFeatureGenerator.isSwampHut(pos)) {
+            return this.scatteredFeatureGenerator.getMonsters();
+         }
+
+         if (creatureType == IC.MONSTER && this.settings.useMonuments && this.oceanMonumentGenerator.isPositionInStructure(this.world, pos)) {
+            return this.oceanMonumentGenerator.getMonsters();
+         }
+      }
+
+      return biome.getSpawnableList(creatureType);
+   }
+
+   public boolean isInsideStructure(bij worldIn, String structureName, BlockPos pos) {
+      if (!this.mapFeaturesEnabled) {
+         return false;
+      } else if ("Stronghold".equals(structureName) && this.strongholdGenerator != null) {
+         return this.strongholdGenerator.isInsideStructure(pos);
+      } else if ("Mansion".equals(structureName) && this.woodlandMansionGenerator != null) {
+         return this.woodlandMansionGenerator.isInsideStructure(pos);
+      } else if ("Monument".equals(structureName) && this.oceanMonumentGenerator != null) {
+         return this.oceanMonumentGenerator.isInsideStructure(pos);
+      } else if ("Village".equals(structureName) && this.villageGenerator != null) {
+         return this.villageGenerator.isInsideStructure(pos);
+      } else if ("Mineshaft".equals(structureName) && this.mineshaftGenerator != null) {
+         return this.mineshaftGenerator.isInsideStructure(pos);
+      } else {
+         return "Temple".equals(structureName) && this.scatteredFeatureGenerator != null ? this.scatteredFeatureGenerator.isInsideStructure(pos) : false;
+      }
+   }
+
+   @Nullable
+   public BlockPos getNearestStructurePos(bij worldIn, String structureName, BlockPos position, boolean findUnexplored) {
+      if (!this.mapFeaturesEnabled) {
+         return null;
+      } else if ("Stronghold".equals(structureName) && this.strongholdGenerator != null) {
+         return this.strongholdGenerator.getNearestStructurePos(worldIn, position, findUnexplored);
+      } else if ("Mansion".equals(structureName) && this.woodlandMansionGenerator != null) {
+         return this.woodlandMansionGenerator.getNearestStructurePos(worldIn, position, findUnexplored);
+      } else if ("Monument".equals(structureName) && this.oceanMonumentGenerator != null) {
+         return this.oceanMonumentGenerator.getNearestStructurePos(worldIn, position, findUnexplored);
+      } else if ("Village".equals(structureName) && this.villageGenerator != null) {
+         return this.villageGenerator.getNearestStructurePos(worldIn, position, findUnexplored);
+      } else if ("Mineshaft".equals(structureName) && this.mineshaftGenerator != null) {
+         return this.mineshaftGenerator.getNearestStructurePos(worldIn, position, findUnexplored);
+      } else {
+         return "Temple".equals(structureName) && this.scatteredFeatureGenerator != null ? this.scatteredFeatureGenerator.getNearestStructurePos(worldIn, position, findUnexplored) : null;
+      }
+   }
+
+   public void recreateStructures(bam chunkIn, int x, int z) {
+      if (this.mapFeaturesEnabled) {
+         if (this.settings.useMineShafts) {
+            this.mineshaftGenerator.generate(this.world, x, z, (ban)null);
+         }
+
+         if (this.settings.useVillages) {
+            this.villageGenerator.generate(this.world, x, z, (ban)null);
+         }
+
+         if (this.settings.useStrongholds) {
+            this.strongholdGenerator.generate(this.world, x, z, (ban)null);
+         }
+
+         if (this.settings.useTemples) {
+            this.scatteredFeatureGenerator.generate(this.world, x, z, (ban)null);
+         }
+
+         if (this.settings.useMonuments) {
+            this.oceanMonumentGenerator.generate(this.world, x, z, (ban)null);
+         }
+
+         if (this.settings.useMansions) {
+            this.woodlandMansionGenerator.generate(this.world, x, z, (ban)null);
+         }
+      }
+
+   }
+
+   static {
+      STONE = Nk.STONE.getDefaultState();
+   }
+}

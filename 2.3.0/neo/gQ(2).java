@@ -1,0 +1,20 @@
+package neo;
+
+import net.minecraft.util.math.BlockPos;
+
+public class gQ extends cZ {
+   private static final hK[] MAP_COLORS;
+
+   public gQ() {
+      super(hM.ROCK);
+   }
+
+   /** @deprecated */
+   public hK getMapColor(in state, bfZ worldIn, BlockPos pos) {
+      return MAP_COLORS[((Om)state.getValue(COLOR)).getMetadata()];
+   }
+
+   static {
+      MAP_COLORS = new hK[]{hK.WHITE_STAINED_HARDENED_CLAY, hK.ORANGE_STAINED_HARDENED_CLAY, hK.MAGENTA_STAINED_HARDENED_CLAY, hK.LIGHT_BLUE_STAINED_HARDENED_CLAY, hK.YELLOW_STAINED_HARDENED_CLAY, hK.LIME_STAINED_HARDENED_CLAY, hK.PINK_STAINED_HARDENED_CLAY, hK.GRAY_STAINED_HARDENED_CLAY, hK.SILVER_STAINED_HARDENED_CLAY, hK.CYAN_STAINED_HARDENED_CLAY, hK.PURPLE_STAINED_HARDENED_CLAY, hK.BLUE_STAINED_HARDENED_CLAY, hK.BROWN_STAINED_HARDENED_CLAY, hK.GREEN_STAINED_HARDENED_CLAY, hK.RED_STAINED_HARDENED_CLAY, hK.BLACK_STAINED_HARDENED_CLAY};
+   }
+}

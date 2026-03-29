@@ -1,0 +1,54 @@
+package neo;
+
+public class nJ extends nH {
+   public ow headPiece;
+   public ow footPiece;
+   public ow[] legs = new ow[4];
+
+   public nJ() {
+      this.textureWidth = 64;
+      this.textureHeight = 64;
+      this.headPiece = new ow(this, 0, 0);
+      this.headPiece.addBox(0.0F, 0.0F, 0.0F, 16, 16, 6, 0.0F);
+      this.footPiece = new ow(this, 0, 22);
+      this.footPiece.addBox(0.0F, 0.0F, 0.0F, 16, 16, 6, 0.0F);
+      this.legs[0] = new ow(this, 50, 0);
+      this.legs[1] = new ow(this, 50, 6);
+      this.legs[2] = new ow(this, 50, 12);
+      this.legs[3] = new ow(this, 50, 18);
+      this.legs[0].addBox(0.0F, 6.0F, -16.0F, 3, 3, 3);
+      this.legs[1].addBox(0.0F, 6.0F, 0.0F, 3, 3, 3);
+      this.legs[2].addBox(-16.0F, 6.0F, -16.0F, 3, 3, 3);
+      this.legs[3].addBox(-16.0F, 6.0F, 0.0F, 3, 3, 3);
+      this.legs[0].rotateAngleX = 1.5707964F;
+      this.legs[1].rotateAngleX = 1.5707964F;
+      this.legs[2].rotateAngleX = 1.5707964F;
+      this.legs[3].rotateAngleX = 1.5707964F;
+      this.legs[0].rotateAngleZ = 0.0F;
+      this.legs[1].rotateAngleZ = 1.5707964F;
+      this.legs[2].rotateAngleZ = 4.712389F;
+      this.legs[3].rotateAngleZ = 3.1415927F;
+   }
+
+   public int getModelVersion() {
+      return 51;
+   }
+
+   public void render() {
+      this.headPiece.render(0.0625F);
+      this.footPiece.render(0.0625F);
+      this.legs[0].render(0.0625F);
+      this.legs[1].render(0.0625F);
+      this.legs[2].render(0.0625F);
+      this.legs[3].render(0.0625F);
+   }
+
+   public void preparePiece(boolean p_193769_1_) {
+      this.headPiece.showModel = p_193769_1_;
+      this.footPiece.showModel = !p_193769_1_;
+      this.legs[0].showModel = !p_193769_1_;
+      this.legs[1].showModel = p_193769_1_;
+      this.legs[2].showModel = !p_193769_1_;
+      this.legs[3].showModel = p_193769_1_;
+   }
+}

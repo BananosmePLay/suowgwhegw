@@ -1,0 +1,162 @@
+package neo;
+
+import com.google.common.collect.Lists;
+import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+public class zO {
+   private static final Logger LOGGER = LogManager.getLogger();
+   private final List<zR> elements;
+   private final List<Integer> offsets;
+   private int vertexSize;
+   private int colorElementOffset;
+   private final List<Integer> uvOffsetsById;
+   private int normalElementOffset;
+
+   public zO(zO vertexFormatIn) {
+      this();
+
+      for(int i = 0; i < vertexFormatIn.getElementCount(); ++i) {
+         this.addElement(vertexFormatIn.getElement(i));
+      }
+
+      this.vertexSize = vertexFormatIn.getSize();
+   }
+
+   public zO() {
+      this.elements = Lists.newArrayList();
+      this.offsets = Lists.newArrayList();
+      this.colorElementOffset = -1;
+      this.uvOffsetsById = Lists.newArrayList();
+      this.normalElementOffset = -1;
+   }
+
+   public void clear() {
+      this.elements.clear();
+      this.offsets.clear();
+      this.colorElementOffset = -1;
+      this.uvOffsetsById.clear();
+      this.normalElementOffset = -1;
+      this.vertexSize = 0;
+   }
+
+   public zO addElement(zR element) {
+      if (element.isPositionElement() && this.hasPosition()) {
+         LOGGER.warn("VertexFormat error: Trying to add a position VertexFormatElement when one already exists, ignoring.");
+         return this;
+      } else {
+         this.elements.add(element);
+         this.offsets.add(this.vertexSize);
+         switch (element.getUsage()) {
+            case NORMAL:
+               this.normalElementOffset = this.vertexSize;
+               break;
+            case COLOR:
+               this.colorElementOffset = this.vertexSize;
+               break;
+            case UV:
+               this.uvOffsetsById.add(element.getIndex(), this.vertexSize);
+         }
+
+         this.vertexSize += element.getSize();
+         return this;
+      }
+   }
+
+   public boolean hasNormal() {
+      return this.normalElementOffset >= 0;
+   }
+
+   public int getNormalOffset() {
+      return this.normalElementOffset;
+   }
+
+   public boolean hasColor() {
+      return this.colorElementOffset >= 0;
+   }
+
+   public int getColorOffset() {
+      return this.colorElementOffset;
+   }
+
+   public boolean hasUvOffset(int id) {
+      return this.uvOffsetsById.size() - 1 >= id;
+   }
+
+   public int getUvOffsetById(int id) {
+      return (Integer)this.uvOffsetsById.get(id);
+   }
+
+   public String toString() {
+      String s = "format: " + this.elements.size() + " elements: ";
+
+      for(int i = 0; i < this.elements.size(); ++i) {
+         s = s + ((zR)this.elements.get(i)).toString();
+         if (i != this.elements.size() - 1) {
+            s = s + " ";
+         }
+      }
+
+      return s;
+   }
+
+   private boolean hasPosition() {
+      int i = 0;
+
+      for(int j = this.elements.size(); i < j; ++i) {
+         zR vertexformatelement = (zR)this.elements.get(i);
+         if (vertexformatelement.isPositionElement()) {
+            return true;
+         }
+      }
+
+      return false;
+   }
+
+   public int getIntegerSize() {
+      return this.getSize() / 4;
+   }
+
+   public int getSize() {
+      return this.vertexSize;
+   }
+
+   public List<zR> getElements() {
+      return this.elements;
+   }
+
+   public int getElementCount() {
+      return this.elements.size();
+   }
+
+   public zR getElement(int index) {
+      return (zR)this.elements.get(index);
+   }
+
+   public int getOffset(int index) {
+      return (Integer)this.offsets.get(index);
+   }
+
+   public boolean equals(Object p_equals_1_) {
+      if (this == p_equals_1_) {
+         return true;
+      } else if (p_equals_1_ != null && this.getClass() == p_equals_1_.getClass()) {
+         zO vertexformat = (zO)p_equals_1_;
+         if (this.vertexSize != vertexformat.vertexSize) {
+            return false;
+         } else {
+            return !this.elements.equals(vertexformat.elements) ? false : this.offsets.equals(vertexformat.offsets);
+         }
+      } else {
+         return false;
+      }
+   }
+
+   public int hashCode() {
+      int i = this.elements.hashCode();
+      i = 31 * i + this.offsets.hashCode();
+      i = 31 * i + this.vertexSize;
+      return i;
+   }
+}

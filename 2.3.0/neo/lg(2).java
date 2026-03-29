@@ -1,0 +1,520 @@
+package neo;
+
+import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import java.awt.Toolkit;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.event.ClickEvent;
+import net.minecraft.util.text.event.HoverEvent;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
+
+public abstract class lg extends jI implements lL {
+   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Set<String> PROTOCOLS = Sets.newHashSet(new String[]{"http", "https"});
+   private static final Splitter NEWLINE_SPLITTER = Splitter.on('\n');
+   protected nC mc;
+   protected yK itemRender;
+   public int width;
+   public int height;
+   protected List<jK> buttonList = Lists.newArrayList();
+   protected List<kt> labelList = Lists.newArrayList();
+   public boolean allowUserInput;
+   protected jH fontRenderer;
+   protected jK selectedButton;
+   protected int eventButton;
+   private long lastMouseEvent;
+   private int touchValue;
+   private URI clickedLinkURI;
+   private boolean focused;
+
+   public lg() {
+   }
+
+   public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+      int j;
+      for(j = 0; j < this.buttonList.size(); ++j) {
+         ((jK)this.buttonList.get(j)).drawButton(this.mc, mouseX, mouseY, partialTicks);
+      }
+
+      for(j = 0; j < this.labelList.size(); ++j) {
+         ((kt)this.labelList.get(j)).drawLabel(this.mc, mouseX, mouseY);
+      }
+
+   }
+
+   protected void keyTyped(char typedChar, int keyCode) throws IOException {
+      if (keyCode == 1) {
+         this.mc.displayGuiScreen((lg)null);
+         if (this.mc.currentScreen == null) {
+            this.mc.setIngameFocus();
+         }
+      }
+
+   }
+
+   protected <T extends jK> T addButton(T buttonIn) {
+      this.buttonList.add(buttonIn);
+      return buttonIn;
+   }
+
+   public static String getClipboardString() {
+      try {
+         Transferable transferable = Toolkit.getDefaultToolkit().getSystemClipboard().getContents((Object)null);
+         if (transferable != null && transferable.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+            return (String)transferable.getTransferData(DataFlavor.stringFlavor);
+         }
+      } catch (Exception var1) {
+      }
+
+      return "";
+   }
+
+   public static void setClipboardString(String copyText) {
+      if (!StringUtils.isEmpty(copyText)) {
+         try {
+            StringSelection stringselection = new StringSelection(copyText);
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringselection, (ClipboardOwner)null);
+         } catch (Exception var2) {
+         }
+      }
+
+   }
+
+   protected void renderToolTip(Qy stack, int x, int y) {
+      this.drawHoveringText(this.getItemToolTip(stack), x, y);
+   }
+
+   public List<String> getItemToolTip(Qy p_191927_1_) {
+      nC var10001 = this.mc;
+      nC var10002 = this.mc;
+      List<String> list = p_191927_1_.getTooltip(nC.player, nC.gameSettings.advancedItemTooltips ? BI.ADVANCED : BI.NORMAL);
+
+      for(int i = 0; i < list.size(); ++i) {
+         if (i == 0) {
+            list.set(i, p_191927_1_.getRarity().color + (String)list.get(i));
+         } else {
+            list.set(i, TextFormatting.GRAY + (String)list.get(i));
+         }
+      }
+
+      return list;
+   }
+
+   public void drawHoveringText(String text, int x, int y) {
+      this.drawHoveringText(Arrays.asList(text), x, y);
+   }
+
+   public void setFocused(boolean hasFocusedControlIn) {
+      this.focused = hasFocusedControlIn;
+   }
+
+   public boolean isFocused() {
+      return this.focused;
+   }
+
+   public void drawHoveringText(List<String> textLines, int x, int y) {
+      if (!textLines.isEmpty()) {
+         yh.disableRescaleNormal();
+         yz.disableStandardItemLighting();
+         yh.disableLighting();
+         yh.disableDepth();
+         int i = 0;
+         Iterator var5 = textLines.iterator();
+
+         int k;
+         while(var5.hasNext()) {
+            String s = (String)var5.next();
+            k = this.fontRenderer.getStringWidth(s);
+            if (k > i) {
+               i = k;
+            }
+         }
+
+         int l1 = x + 12;
+         int i2 = y - 12;
+         k = 8;
+         if (textLines.size() > 1) {
+            k += 2 + (textLines.size() - 1) * 10;
+         }
+
+         if (l1 + i > this.width) {
+            l1 -= 28 + i;
+         }
+
+         if (i2 + k + 6 > this.height) {
+            i2 = this.height - k - 6;
+         }
+
+         this.zLevel = 300.0F;
+         this.itemRender.zLevel = 300.0F;
+         int l = -267386864;
+         this.drawGradientRect(l1 - 3, i2 - 4, l1 + i + 3, i2 - 3, -267386864, -267386864);
+         this.drawGradientRect(l1 - 3, i2 + k + 3, l1 + i + 3, i2 + k + 4, -267386864, -267386864);
+         this.drawGradientRect(l1 - 3, i2 - 3, l1 + i + 3, i2 + k + 3, -267386864, -267386864);
+         this.drawGradientRect(l1 - 4, i2 - 3, l1 - 3, i2 + k + 3, -267386864, -267386864);
+         this.drawGradientRect(l1 + i + 3, i2 - 3, l1 + i + 4, i2 + k + 3, -267386864, -267386864);
+         int i1 = 1347420415;
+         int j1 = 1344798847;
+         this.drawGradientRect(l1 - 3, i2 - 3 + 1, l1 - 3 + 1, i2 + k + 3 - 1, 1347420415, 1344798847);
+         this.drawGradientRect(l1 + i + 2, i2 - 3 + 1, l1 + i + 3, i2 + k + 3 - 1, 1347420415, 1344798847);
+         this.drawGradientRect(l1 - 3, i2 - 3, l1 + i + 3, i2 - 3 + 1, 1347420415, 1347420415);
+         this.drawGradientRect(l1 - 3, i2 + k + 2, l1 + i + 3, i2 + k + 3, 1344798847, 1344798847);
+
+         for(int k1 = 0; k1 < textLines.size(); ++k1) {
+            String s1 = (String)textLines.get(k1);
+            this.fontRenderer.drawStringWithShadow(s1, (float)l1, (float)i2, -1);
+            if (k1 == 0) {
+               i2 += 2;
+            }
+
+            i2 += 10;
+         }
+
+         this.zLevel = 0.0F;
+         this.itemRender.zLevel = 0.0F;
+         yh.enableLighting();
+         yh.enableDepth();
+         yz.enableStandardItemLighting();
+         yh.enableRescaleNormal();
+      }
+
+   }
+
+   protected void handleComponentHover(ITextComponent component, int x, int y) {
+      if (component != null && component.getStyle().getHoverEvent() != null) {
+         HoverEvent hoverevent = component.getStyle().getHoverEvent();
+         if (hoverevent.getAction() == HoverEvent.Action.SHOW_ITEM) {
+            Qy itemstack = Qy.EMPTY;
+
+            try {
+               QH nbtbase = QG.getTagFromJson(hoverevent.getValue().getUnformattedText());
+               if (nbtbase instanceof QQ) {
+                  itemstack = new Qy((QQ)nbtbase);
+               }
+            } catch (QI var9) {
+            }
+
+            if (itemstack.isEmpty()) {
+               this.drawHoveringText(TextFormatting.RED + "Invalid Item!", x, y);
+            } else {
+               this.renderToolTip(itemstack, x, y);
+            }
+         } else if (hoverevent.getAction() == HoverEvent.Action.SHOW_ENTITY) {
+            nC var10000 = this.mc;
+            if (nC.gameSettings.advancedItemTooltips) {
+               try {
+                  QQ nbttagcompound = QG.getTagFromJson(hoverevent.getValue().getUnformattedText());
+                  List<String> list = Lists.newArrayList();
+                  list.add(nbttagcompound.getString("name"));
+                  if (nbttagcompound.hasKey("type", 8)) {
+                     String s = nbttagcompound.getString("type");
+                     list.add("Type: " + s);
+                  }
+
+                  list.add(nbttagcompound.getString("id"));
+                  this.drawHoveringText((List)list, x, y);
+               } catch (QI var8) {
+                  this.drawHoveringText(TextFormatting.RED + "Invalid Entity!", x, y);
+               }
+            }
+         } else if (hoverevent.getAction() == HoverEvent.Action.SHOW_TEXT) {
+            this.drawHoveringText(this.mc.fontRenderer.listFormattedStringToWidth(hoverevent.getValue().getFormattedText(), Math.max(this.width / 2, 200)), x, y);
+         }
+
+         yh.disableLighting();
+      }
+
+   }
+
+   protected void setText(String newChatText, boolean shouldOverwrite) {
+   }
+
+   public boolean handleComponentClick(ITextComponent component) {
+      if (component == null) {
+         return false;
+      } else {
+         ClickEvent clickevent = component.getStyle().getClickEvent();
+         if (isShiftKeyDown()) {
+            if (component.getStyle().getInsertion() != null) {
+               this.setText(component.getStyle().getInsertion(), false);
+            }
+         } else if (clickevent != null) {
+            URI uri;
+            if (clickevent.getAction() == ClickEvent.Action.OPEN_URL) {
+               nC var10000 = this.mc;
+               if (!nC.gameSettings.chatLinks) {
+                  return false;
+               }
+
+               try {
+                  uri = new URI(clickevent.getValue());
+                  String s = uri.getScheme();
+                  if (s == null) {
+                     throw new URISyntaxException(clickevent.getValue(), "Missing protocol");
+                  }
+
+                  if (!PROTOCOLS.contains(s.toLowerCase(Locale.ROOT))) {
+                     throw new URISyntaxException(clickevent.getValue(), "Unsupported protocol: " + s.toLowerCase(Locale.ROOT));
+                  }
+
+                  var10000 = this.mc;
+                  if (nC.gameSettings.chatLinksPrompt) {
+                     this.clickedLinkURI = uri;
+                     this.mc.displayGuiScreen(new jT(this, clickevent.getValue(), 31102009, false));
+                  } else {
+                     this.openWebLink(uri);
+                  }
+               } catch (URISyntaxException var5) {
+                  URISyntaxException urisyntaxexception = var5;
+                  LOGGER.error("Can't open url for {}", clickevent, urisyntaxexception);
+               }
+            } else if (clickevent.getAction() == ClickEvent.Action.OPEN_FILE) {
+               uri = (new File(clickevent.getValue())).toURI();
+               this.openWebLink(uri);
+            } else if (clickevent.getAction() == ClickEvent.Action.SUGGEST_COMMAND) {
+               this.setText(clickevent.getValue(), true);
+            } else if (clickevent.getAction() == ClickEvent.Action.RUN_COMMAND) {
+               this.sendChatMessage(clickevent.getValue(), false);
+            } else {
+               LOGGER.error("Don't know how to handle {}", clickevent);
+            }
+
+            return true;
+         }
+
+         return false;
+      }
+   }
+
+   public void sendChatMessage(String msg) {
+      this.sendChatMessage(msg, true);
+   }
+
+   public void sendChatMessage(String msg, boolean addToChat) {
+      if (addToChat) {
+         this.mc.ingameGUI.getChatGUI().addToSentMessages(msg);
+      }
+
+      nC var10000 = this.mc;
+      nC.player.sendChatMessage(msg);
+   }
+
+   protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+      0bz.method_Qm().method_Qn().post(new 0dh(mouseX, mouseY, mouseButton));
+      if (mouseButton == 0) {
+         for(int i = 0; i < this.buttonList.size(); ++i) {
+            jK guibutton = (jK)this.buttonList.get(i);
+            if (guibutton.mousePressed(this.mc, mouseX, mouseY)) {
+               this.selectedButton = guibutton;
+               guibutton.playPressSound(this.mc.getSoundHandler());
+               this.actionPerformed(guibutton);
+            }
+         }
+      }
+
+   }
+
+   protected void mouseReleased(int mouseX, int mouseY, int state) {
+      if (this.selectedButton != null && state == 0) {
+         this.selectedButton.mouseReleased(mouseX, mouseY);
+         this.selectedButton = null;
+      }
+
+   }
+
+   protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
+   }
+
+   protected void actionPerformed(jK button) throws IOException {
+   }
+
+   public void setWorldAndResolution(nC mc, int width, int height) {
+      this.mc = mc;
+      this.itemRender = mc.getRenderItem();
+      this.fontRenderer = mc.fontRenderer;
+      this.width = width;
+      this.height = height;
+      this.buttonList.clear();
+      this.initGui();
+   }
+
+   public void setGuiSize(int w, int h) {
+      this.width = w;
+      this.height = h;
+   }
+
+   public void initGui() {
+   }
+
+   public void handleInput() throws IOException {
+      if (Mouse.isCreated()) {
+         while(Mouse.next()) {
+            this.handleMouseInput();
+         }
+      }
+
+      if (Keyboard.isCreated()) {
+         while(Keyboard.next()) {
+            this.handleKeyboardInput();
+         }
+      }
+
+   }
+
+   public void handleMouseInput() throws IOException {
+      int i = Mouse.getEventX() * this.width / this.mc.displayWidth;
+      int j = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1;
+      int k = Mouse.getEventButton();
+      nC var10000;
+      if (Mouse.getEventButtonState()) {
+         var10000 = this.mc;
+         if (nC.gameSettings.touchscreen && this.touchValue++ > 0) {
+            return;
+         }
+
+         this.eventButton = k;
+         this.lastMouseEvent = nC.getSystemTime();
+         this.mouseClicked(i, j, this.eventButton);
+      } else if (k != -1) {
+         var10000 = this.mc;
+         if (nC.gameSettings.touchscreen && --this.touchValue > 0) {
+            return;
+         }
+
+         this.eventButton = -1;
+         this.mouseReleased(i, j, k);
+      } else if (this.eventButton != -1 && this.lastMouseEvent > 0L) {
+         long l = nC.getSystemTime() - this.lastMouseEvent;
+         this.mouseClickMove(i, j, this.eventButton, l);
+      }
+
+   }
+
+   public void handleKeyboardInput() throws IOException {
+      char c0 = Keyboard.getEventCharacter();
+      if (Keyboard.getEventKey() == 0 && c0 >= ' ' || Keyboard.getEventKeyState()) {
+         this.keyTyped(c0, Keyboard.getEventKey());
+      }
+
+      this.mc.dispatchKeypresses();
+   }
+
+   public void updateScreen() {
+   }
+
+   public void onGuiClosed() {
+   }
+
+   public void drawDefaultBackground() {
+      this.drawWorldBackground(0);
+   }
+
+   public void drawWorldBackground(int tint) {
+      if (this.mc.world != null) {
+         this.drawGradientRect(0, 0, this.width, this.height, -1072689136, -804253680);
+      } else {
+         this.drawBackground(tint);
+      }
+
+   }
+
+   public void drawBackground(int tint) {
+      yh.disableLighting();
+      yh.disableFog();
+      yN tessellator = yN.getInstance();
+      tN bufferbuilder = tessellator.getBuffer();
+      this.mc.getTextureManager().bindTexture(OPTIONS_BACKGROUND);
+      yh.color(1.0F, 1.0F, 1.0F, 1.0F);
+      float f = 32.0F;
+      bufferbuilder.begin(7, zK.POSITION_TEX_COLOR);
+      bufferbuilder.pos(0.0, (double)this.height, 0.0).tex(0.0, (double)((float)this.height / 32.0F + (float)tint)).color(64, 64, 64, 255).endVertex();
+      bufferbuilder.pos((double)this.width, (double)this.height, 0.0).tex((double)((float)this.width / 32.0F), (double)((float)this.height / 32.0F + (float)tint)).color(64, 64, 64, 255).endVertex();
+      bufferbuilder.pos((double)this.width, 0.0, 0.0).tex((double)((float)this.width / 32.0F), (double)tint).color(64, 64, 64, 255).endVertex();
+      bufferbuilder.pos(0.0, 0.0, 0.0).tex(0.0, (double)tint).color(64, 64, 64, 255).endVertex();
+      tessellator.draw();
+   }
+
+   public boolean doesGuiPauseGame() {
+      return true;
+   }
+
+   public void confirmClicked(boolean result, int id) {
+      if (id == 31102009) {
+         if (result) {
+            this.openWebLink(this.clickedLinkURI);
+         }
+
+         this.clickedLinkURI = null;
+         this.mc.displayGuiScreen(this);
+      }
+
+   }
+
+   private void openWebLink(URI url) {
+      try {
+         Class<?> oclass = Class.forName("java.awt.Desktop");
+         Object object = oclass.getMethod("getDesktop").invoke((Object)null);
+         oclass.getMethod("browse", URI.class).invoke(object, url);
+      } catch (Throwable var4) {
+         Throwable throwable1 = var4;
+         Throwable throwable = throwable1.getCause();
+         LOGGER.error("Couldn't open link: {}", throwable == null ? "<UNKNOWN>" : throwable.getMessage());
+      }
+
+   }
+
+   public static boolean isCtrlKeyDown() {
+      if (nC.IS_RUNNING_ON_MAC) {
+         return Keyboard.isKeyDown(219) || Keyboard.isKeyDown(220);
+      } else {
+         return Keyboard.isKeyDown(29) || Keyboard.isKeyDown(157);
+      }
+   }
+
+   public static boolean isShiftKeyDown() {
+      return Keyboard.isKeyDown(42) || Keyboard.isKeyDown(54);
+   }
+
+   public static boolean isAltKeyDown() {
+      return Keyboard.isKeyDown(56) || Keyboard.isKeyDown(184);
+   }
+
+   public static boolean isKeyComboCtrlX(int keyID) {
+      return keyID == 45 && isCtrlKeyDown() && !isShiftKeyDown() && !isAltKeyDown();
+   }
+
+   public static boolean isKeyComboCtrlV(int keyID) {
+      return keyID == 47 && isCtrlKeyDown() && !isShiftKeyDown() && !isAltKeyDown();
+   }
+
+   public static boolean isKeyComboCtrlC(int keyID) {
+      return keyID == 46 && isCtrlKeyDown() && !isShiftKeyDown() && !isAltKeyDown();
+   }
+
+   public static boolean isKeyComboCtrlA(int keyID) {
+      return keyID == 30 && isCtrlKeyDown() && !isShiftKeyDown() && !isAltKeyDown();
+   }
+
+   public void onResize(nC mcIn, int w, int h) {
+      this.setWorldAndResolution(mcIn, w, h);
+   }
+}

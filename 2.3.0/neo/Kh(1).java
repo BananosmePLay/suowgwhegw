@@ -1,0 +1,181 @@
+package neo;
+
+import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
+
+public class Kh extends KS implements IK {
+   private int ghostTime;
+   private final Vec3d[][] renderLocations;
+
+   public Kh(bij worldIn) {
+      super(worldIn);
+      this.setSize(0.6F, 1.95F);
+      this.experienceValue = 5;
+      this.renderLocations = new Vec3d[2][4];
+
+      for(int i = 0; i < 4; ++i) {
+         this.renderLocations[0][i] = new Vec3d(0.0, 0.0, 0.0);
+         this.renderLocations[1][i] = new Vec3d(0.0, 0.0, 0.0);
+      }
+
+   }
+
+   protected void initEntityAI() {
+      super.initEntityAI();
+      this.tasks.addTask(0, new He(this));
+      this.tasks.addTask(1, new KP(this));
+      this.tasks.addTask(4, new Kg(this));
+      this.tasks.addTask(5, new Kf(this));
+      this.tasks.addTask(6, new Gf(this, 0.5, 20, 15.0F));
+      this.tasks.addTask(8, new Hn(this, 0.6));
+      this.tasks.addTask(9, new Hq(this, ME.class, 3.0F, 1.0F));
+      this.tasks.addTask(10, new Hq(this, Iu.class, 8.0F));
+      this.targetTasks.addTask(1, new GB(this, true, new Class[]{Kh.class}));
+      this.targetTasks.addTask(2, (new GR(this, ME.class, true)).setUnseenMemoryTicks(300));
+      this.targetTasks.addTask(3, (new GR(this, Mq.class, false)).setUnseenMemoryTicks(300));
+      this.targetTasks.addTask(3, (new GR(this, Kj.class, false)).setUnseenMemoryTicks(300));
+   }
+
+   protected void applyEntityAttributes() {
+      super.applyEntityAttributes();
+      this.getEntityAttribute(Ni.MOVEMENT_SPEED).setBaseValue(0.5);
+      this.getEntityAttribute(Ni.FOLLOW_RANGE).setBaseValue(18.0);
+      this.getEntityAttribute(Ni.MAX_HEALTH).setBaseValue(32.0);
+   }
+
+   public ID onInitialSpawn(baL difficulty, ID livingdata) {
+      this.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, new Qy(NK.BOW));
+      return super.onInitialSpawn(difficulty, livingdata);
+   }
+
+   protected void entityInit() {
+      super.entityInit();
+   }
+
+   protected ResourceLocation getLootTable() {
+      return bhq.EMPTY;
+   }
+
+   public AxisAlignedBB getRenderBoundingBox() {
+      return this.getEntityBoundingBox().grow(3.0, 0.0, 3.0);
+   }
+
+   public void onLivingUpdate() {
+      super.onLivingUpdate();
+      if (this.world.isRemote && this.isInvisible()) {
+         --this.ghostTime;
+         if (this.ghostTime < 0) {
+            this.ghostTime = 0;
+         }
+
+         if (this.hurtTime != 1 && this.ticksExisted % 1200 != 0) {
+            if (this.hurtTime == this.maxHurtTime - 1) {
+               this.ghostTime = 3;
+
+               for(int k = 0; k < 4; ++k) {
+                  this.renderLocations[0][k] = this.renderLocations[1][k];
+                  this.renderLocations[1][k] = new Vec3d(0.0, 0.0, 0.0);
+               }
+            }
+         } else {
+            this.ghostTime = 3;
+            float f = -6.0F;
+            int i = true;
+
+            int l;
+            for(l = 0; l < 4; ++l) {
+               this.renderLocations[0][l] = this.renderLocations[1][l];
+               this.renderLocations[1][l] = new Vec3d((double)(-6.0F + (float)this.rand.nextInt(13)) * 0.5, (double)Math.max(0, this.rand.nextInt(6) - 4), (double)(-6.0F + (float)this.rand.nextInt(13)) * 0.5);
+            }
+
+            for(l = 0; l < 16; ++l) {
+               this.world.spawnParticle(EnumParticleTypes.CLOUD, this.posX + (this.rand.nextDouble() - 0.5) * (double)this.width, this.posY + this.rand.nextDouble() * (double)this.height, this.posZ + (this.rand.nextDouble() - 0.5) * (double)this.width, 0.0, 0.0, 0.0);
+            }
+
+            this.world.playSound(this.posX, this.posY, this.posZ, NO.ENTITY_ILLAGER_MIRROR_MOVE, this.getSoundCategory(), 1.0F, 1.0F, false);
+         }
+      }
+
+   }
+
+   public Vec3d[] getRenderLocations(float p_193098_1_) {
+      if (this.ghostTime <= 0) {
+         return this.renderLocations[1];
+      } else {
+         double d0 = (double)(((float)this.ghostTime - p_193098_1_) / 3.0F);
+         d0 = Math.pow(d0, 0.25);
+         Vec3d[] avec3d = new Vec3d[4];
+
+         for(int i = 0; i < 4; ++i) {
+            avec3d[i] = this.renderLocations[1][i].scale(1.0 - d0).add(this.renderLocations[0][i].scale(d0));
+         }
+
+         return avec3d;
+      }
+   }
+
+   public boolean isOnSameTeam(Ig entityIn) {
+      if (super.isOnSameTeam(entityIn)) {
+         return true;
+      } else if (entityIn instanceof Iw && ((Iw)entityIn).getCreatureAttribute() == IB.ILLAGER) {
+         return this.getTeam() == null && entityIn.getTeam() == null;
+      } else {
+         return false;
+      }
+   }
+
+   protected SoundEvent getAmbientSound() {
+      return NO.ENTITY_ILLUSION_ILLAGER_AMBIENT;
+   }
+
+   protected SoundEvent getDeathSound() {
+      return NO.ENTITY_ILLAGER_DEATH;
+   }
+
+   protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
+      return NO.ENTITY_ILLUSION_ILLAGER_HURT;
+   }
+
+   protected SoundEvent getSpellSound() {
+      return NO.ENTITY_ILLAGER_CAST_SPELL;
+   }
+
+   public void attackEntityWithRangedAttack(Iw target, float distanceFactor) {
+      MO entityarrow = this.createArrowEntity(distanceFactor);
+      double d0 = target.posX - this.posX;
+      double d1 = target.getEntityBoundingBox().minY + (double)(target.height / 3.0F) - entityarrow.posY;
+      double d2 = target.posZ - this.posZ;
+      double d3 = (double)MathHelper.sqrt(d0 * d0 + d2 * d2);
+      entityarrow.shoot(d0, d1 + d3 * 0.20000000298023224, d2, 1.6F, (float)(14 - this.world.getDifficulty().getId() * 4));
+      this.playSound(NO.ENTITY_SKELETON_SHOOT, 1.0F, 1.0F / (this.getRNG().nextFloat() * 0.4F + 0.8F));
+      this.world.spawnEntity(entityarrow);
+   }
+
+   protected MO createArrowEntity(float p_193097_1_) {
+      Ne entitytippedarrow = new Ne(this.world, this);
+      entitytippedarrow.setEnchantmentEffectsFromEntity(this, p_193097_1_);
+      return entitytippedarrow;
+   }
+
+   public boolean isAggressive() {
+      return this.isAggressive(1);
+   }
+
+   public void setSwingingArms(boolean swingingArms) {
+      this.setAggressive(1, swingingArms);
+   }
+
+   public Ju getArmPose() {
+      if (this.isSpellcasting()) {
+         return Ju.SPELLCASTING;
+      } else {
+         return this.isAggressive() ? Ju.BOW_AND_ARROW : Ju.CROSSED;
+      }
+   }
+}

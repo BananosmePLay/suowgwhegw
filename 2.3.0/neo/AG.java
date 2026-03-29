@@ -1,0 +1,58 @@
+package neo;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Set;
+import javax.annotation.Nullable;
+import net.minecraft.util.ResourceLocation;
+
+public class AG implements AC {
+   private final AC pack;
+
+   public AG(AC packIn) {
+      this.pack = packIn;
+   }
+
+   public InputStream getInputStream(ResourceLocation location) throws IOException {
+      return this.pack.getInputStream(this.fudgePath(location));
+   }
+
+   private ResourceLocation fudgePath(ResourceLocation p_191382_1_) {
+      String s = p_191382_1_.getPath();
+      if (!"lang/swg_de.lang".equals(s) && s.startsWith("lang/") && s.endsWith(".lang")) {
+         int i = s.indexOf(95);
+         if (i != -1) {
+            final String s1 = s.substring(0, i + 1) + s.substring(i + 1, s.indexOf(46, i)).toUpperCase() + ".lang";
+            return new ResourceLocation(p_191382_1_.getNamespace(), "") {
+               public String getPath() {
+                  return s1;
+               }
+            };
+         }
+      }
+
+      return p_191382_1_;
+   }
+
+   public boolean resourceExists(ResourceLocation location) {
+      return this.pack.resourceExists(this.fudgePath(location));
+   }
+
+   public Set<String> getResourceDomains() {
+      return this.pack.getResourceDomains();
+   }
+
+   @Nullable
+   public <T extends Ad> T getPackMetadata(Aj metadataSerializer, String metadataSectionName) throws IOException {
+      return this.pack.getPackMetadata(metadataSerializer, metadataSectionName);
+   }
+
+   public BufferedImage getPackImage() throws IOException {
+      return this.pack.getPackImage();
+   }
+
+   public String getPackName() {
+      return this.pack.getPackName();
+   }
+}

@@ -1,0 +1,103 @@
+package neo;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import net.minecraft.util.math.BlockPos;
+
+public class bqk {
+   private static bnL chunkClass = new bnL(bam.class);
+   private static bnN fieldHasEntities = findFieldHasEntities();
+   private static bnN fieldPrecipitationHeightMap;
+
+   public bqk() {
+   }
+
+   public static boolean hasEntities(bam chunk) {
+      return bnK.getFieldValueBoolean(chunk, fieldHasEntities, true);
+   }
+
+   public static int getPrecipitationHeight(bam chunk, BlockPos pos) {
+      int[] aint = (int[])((int[])bnK.getFieldValue(chunk, fieldPrecipitationHeightMap));
+      if (aint != null && aint.length == 256) {
+         int i = pos.getX() & 15;
+         int j = pos.getZ() & 15;
+         int k = i | j << 4;
+         int l = aint[k];
+         if (l >= 0) {
+            return l;
+         } else {
+            BlockPos blockpos = chunk.getPrecipitationHeight(pos);
+            return blockpos.getY();
+         }
+      } else {
+         return -1;
+      }
+   }
+
+   private static bnN findFieldHasEntities() {
+      try {
+         bam chunk = new bam((bij)null, 0, 0);
+         List<Field> list = new ArrayList();
+         List list1 = new ArrayList();
+         Field[] afield = bam.class.getDeclaredFields();
+
+         for(int i = 0; i < afield.length; ++i) {
+            Field field = afield[i];
+            if (field.getType() == Boolean.TYPE) {
+               field.setAccessible(true);
+               list.add(field);
+               list1.add(field.get(chunk));
+            }
+         }
+
+         chunk.setHasEntities(false);
+         List list2 = new ArrayList();
+         Iterator var15 = list.iterator();
+
+         while(var15.hasNext()) {
+            Field field1 = (Field)var15.next();
+            list2.add(field1.get(chunk));
+         }
+
+         chunk.setHasEntities(true);
+         List list3 = new ArrayList();
+         Iterator var17 = list.iterator();
+
+         Field field4;
+         while(var17.hasNext()) {
+            field4 = (Field)var17.next();
+            list3.add(field4.get(chunk));
+         }
+
+         List list4 = new ArrayList();
+
+         for(int j = 0; j < list.size(); ++j) {
+            Field field3 = (Field)list.get(j);
+            Boolean obool = (Boolean)list2.get(j);
+            Boolean obool1 = (Boolean)list3.get(j);
+            if (!obool && obool1) {
+               list4.add(field3);
+               Boolean obool2 = (Boolean)list1.get(j);
+               field3.set(chunk, obool2);
+            }
+         }
+
+         if (list4.size() == 1) {
+            field4 = (Field)list4.get(0);
+            return new bnN(field4);
+         }
+      } catch (Exception var12) {
+         Exception exception = var12;
+         XH.warn(exception.getClass().getName() + " " + exception.getMessage());
+      }
+
+      XH.warn("Error finding Chunk.hasEntities");
+      return new bnN(new bnL(bam.class), "hasEntities");
+   }
+
+   static {
+      fieldPrecipitationHeightMap = new bnN(chunkClass, int[].class, 0);
+   }
+}

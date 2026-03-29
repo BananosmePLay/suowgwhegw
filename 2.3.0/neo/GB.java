@@ -1,0 +1,77 @@
+package neo;
+
+import java.util.Iterator;
+import net.minecraft.util.math.AxisAlignedBB;
+
+public class GB extends Hf {
+   private final boolean entityCallsForHelp;
+   private int revengeTimerOld;
+   private final Class<?>[] excludedReinforcementTypes;
+
+   public GB(Ik creatureIn, boolean entityCallsForHelpIn, Class<?>... excludedReinforcementTypes) {
+      super(creatureIn, true);
+      this.entityCallsForHelp = entityCallsForHelpIn;
+      this.excludedReinforcementTypes = excludedReinforcementTypes;
+      this.setMutexBits(1);
+   }
+
+   public boolean shouldExecute() {
+      int i = this.taskOwner.getRevengeTimer();
+      Iw entitylivingbase = this.taskOwner.getRevengeTarget();
+      return i != this.revengeTimerOld && entitylivingbase != null && this.isSuitableTarget(entitylivingbase, false);
+   }
+
+   public void startExecuting() {
+      this.taskOwner.setAttackTarget(this.taskOwner.getRevengeTarget());
+      this.target = this.taskOwner.getAttackTarget();
+      this.revengeTimerOld = this.taskOwner.getRevengeTimer();
+      this.unseenMemoryTicks = 300;
+      if (this.entityCallsForHelp) {
+         this.alertOthers();
+      }
+
+      super.startExecuting();
+   }
+
+   protected void alertOthers() {
+      double d0 = this.getTargetDistance();
+      Iterator var3 = this.taskOwner.world.getEntitiesWithinAABB(this.taskOwner.getClass(), (new AxisAlignedBB(this.taskOwner.posX, this.taskOwner.posY, this.taskOwner.posZ, this.taskOwner.posX + 1.0, this.taskOwner.posY + 1.0, this.taskOwner.posZ + 1.0)).grow(d0, 10.0, d0)).iterator();
+
+      while(true) {
+         Ik entitycreature;
+         do {
+            do {
+               do {
+                  do {
+                     if (!var3.hasNext()) {
+                        return;
+                     }
+
+                     entitycreature = (Ik)var3.next();
+                  } while(this.taskOwner == entitycreature);
+               } while(entitycreature.getAttackTarget() != null);
+            } while(this.taskOwner instanceof Mg && ((Mg)this.taskOwner).getOwner() != ((Mg)entitycreature).getOwner());
+         } while(entitycreature.isOnSameTeam(this.taskOwner.getRevengeTarget()));
+
+         boolean flag = false;
+         Class[] var6 = this.excludedReinforcementTypes;
+         int var7 = var6.length;
+
+         for(int var8 = 0; var8 < var7; ++var8) {
+            Class<?> oclass = var6[var8];
+            if (entitycreature.getClass() == oclass) {
+               flag = true;
+               break;
+            }
+         }
+
+         if (!flag) {
+            this.setEntityAttackTarget(entitycreature, this.taskOwner.getRevengeTarget());
+         }
+      }
+   }
+
+   protected void setEntityAttackTarget(Ik creatureIn, Iw entityLivingBaseIn) {
+      creatureIn.setAttackTarget(entityLivingBaseIn);
+   }
+}
